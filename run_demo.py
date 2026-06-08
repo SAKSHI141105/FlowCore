@@ -305,8 +305,11 @@ def find_error_fix(stderr_text: str) -> Dict[str, Any]:
         err_type = "Git Repository Missing"
         fix_suggestion = "Initialize git: run 'git init'"
     elif "npm" in lower_stderr and "not recognized" in lower_stderr:
-        err_type = "NPM Missing"
-        fix_suggestion = "Install Node.js (which includes npm) and ensure it is added to your Environment PATH."
+        err_type = "Command / Typo Error"
+        if "instal\r" in lower_stderr or "instal\n" in lower_stderr or " instal" in lower_stderr:
+            fix_suggestion = "Typo detected! You wrote 'instal', but the correct spelling is 'npm install'. (Note: You also need to install Node.js first if npm is not found on this system)."
+        else:
+            fix_suggestion = "Install Node.js (which includes npm) and ensure it is added to your Environment PATH."
         
     return {
         "error_type": err_type,
