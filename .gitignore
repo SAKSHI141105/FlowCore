@@ -1,0 +1,25 @@
+# Databases
+*.db
+flowcore.db
+neuroshell.db
+
+# Python caches and virtual environments
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Node modules and build files
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Go binaries and agent buffers
+*.exe
+*.test
+.flowcore_buffer.json
+
+# Local environment configs
+.env
+.env.local
