@@ -1,7 +1,7 @@
 # Databases
 *.db
 flowcore.db
-neuroshell.db
+flowcore.db
 
 # Python caches and virtual environments
 __pycache__/

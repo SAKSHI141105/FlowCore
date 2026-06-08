@@ -957,6 +957,23 @@ async def websocket_terminal(websocket: WebSocket):
 if __name__ == "__main__":
     # Ensure templates directory exists
     os.makedirs(os.path.join(os.path.dirname(__file__), "templates"), exist_ok=True)
+    
+    # Check if port is already in use to prevent ugly Errno 10048 stack traces
+    import socket
+    def is_port_in_use(port: int) -> bool:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex(('localhost', port)) == 0
+            
+    if is_port_in_use(8000):
+        print("\n" + "="*70)
+        print("🚨 ERROR: Port 8000 is already in use by another program.")
+        print("This usually happens if FlowCore is already running in the background.")
+        print("To fix this, please close the other terminal running FlowCore,")
+        print("or run the following command in PowerShell to force-quit the stuck process:")
+        print("  taskkill /F /PID (Get-NetTCPConnection -LocalPort 8000).OwningProcess")
+        print("="*70 + "\n")
+        sys.exit(1)
+        
     print("FlowCore server starting...")
     print("Serving dashboard at: http://127.0.0.1:8000")
     uvicorn.run(app, host="0.0.0.0", port=8000)
