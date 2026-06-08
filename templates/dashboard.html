@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlowCore · AI-Powered Cognitive Terminal OS</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- xterm.css -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <!-- xterm.js -->
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
+    <!-- Spline 3D Viewer -->
+    <script type="module" src="https://unpkg.com/@splinetool/viewer@1.0.91/build/spline-viewer.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bgDark: '#0b0f19',
+                        cardBg: '#1e293b',
+                        cyanAccent: '#3b82f6',
+                        purpleAccent: '#6366f1',
+                        pinkAccent: '#ef4444',
+                        greenAccent: '#10b981',
+                        goldAccent: '#f59e0b',
+                        orangeAccent: '#f97316',
+                        mutedGray: '#64748b'
+                    },
+                    fontFamily: {
+                        space: ['Space Grotesk', 'sans-serif'],
+                        inter: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --bg: #0b0f19;
+            --surface: rgba(255,255,255,0.02);
+            --surface-hover: rgba(255,255,255,0.05);
+            --border: rgba(255,255,255,0.07);
+            --border-hover: rgba(59,130,246,0.3);
+            --cyan: #3b82f6;
+            --purple: #6366f1;
+            --pink: #ef4444;
+            --green: #10b981;
+        }
+        * { box-sizing: border-box; }
+        body {
+            background-color: #0b0f19;
+            color: #E2E8F0;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        /* Subtle dot grid */
+        .cyber-grid {
+            background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+            background-size: 28px 28px;
+        }
+        /* ── Glassmorphism card ── */
+        .glass {
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.07);
+            transition: border-color .25s, box-shadow .25s, transform .25s, background .25s;
+        }
+        .glass:hover {
+            background: rgba(255,255,255,0.055);
+            border-color: rgba(59,130,246,0.3);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            transform: translateY(-1px);
+        }
+        .glass-purple:hover { border-color: rgba(99,102,241,0.35); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .glass-pink:hover   { border-color: rgba(239,68,68,0.35);  box-shadow: 0 4px 20px rgba(0,0,0,0.3);  }
+        /* ── Neon glows ── */
+        .neon-border {
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .glow-text  { text-shadow: none; }
+        .glow-purple{ text-shadow: none; }
+        /* ── Logo ── */
+        .logo-wrapper {
+            position: relative;
+            cursor: default;
+            user-select: none;
+        }
+        .logo-text {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 900;
+            font-size: 1.52rem;
+            letter-spacing: .2em;
+            color: #ffffff;
+            position: relative;
+            overflow: hidden;
+        }
+        .logo-text::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -80%;
+            width: 40%; height: 100%;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.55) 50%, transparent 100%);
+            transform: skewX(-15deg);
+            animation: logoSweep 5s ease-in-out infinite;
+            pointer-events: none;
+        }
+        .logo-icon {
+            width: 40px; height: 40px; border-radius: 12px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex; align-items: center; justify-content: center;
+            transition: transform .3s;
+        }
+        .logo-wrapper:hover .logo-icon {
+            transform: scale(1.05);
+        }
+        /* ── Nav pill ── */
+        .tab-btn {
+            position: relative;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: .8rem;
+            font-weight: 500;
+            color: #6B7280;
+            transition: color .2s, background .2s;
+        }
+        .tab-btn:hover { color: #fff; background: rgba(255,255,255,0.06); }
+        .tab-btn.active {
+            color: #3b82f6;
+            background: rgba(59,130,246,0.1);
+            box-shadow: inset 0 0 0 1px rgba(59,130,246,0.25);
+        }
+        /* ── Buttons ── */
+        .btn-primary {
+            background: #2563eb;
+            color: #ffffff;
+            font-weight: 700;
+            padding: 12px 28px;
+            border-radius: 10px;
+            transition: background .2s, transform .15s;
+        }
+        .btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); }
+        .btn-secondary {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #CBD5E1;
+            padding: 12px 28px;
+            border-radius: 10px;
+            transition: background .2s, border-color .2s, transform .15s;
+        }
+        .btn-secondary:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); transform: translateY(-1px); }
+        /* ── Scanlines ── */
+        .scanlines::before {
+            content:" "; display:block; position:absolute;
+            inset:0; z-index:10; pointer-events:none;
+            background: linear-gradient(rgba(0,0,0,0) 50%, rgba(0,0,0,0.15) 50%);
+            background-size: 100% 4px;
+        }
+        /* ── Feature card hover ── */
+        .feature-card {
+            background: rgba(255,255,255,0.025);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 16px;
+            padding: 28px;
+            transition: all .3s cubic-bezier(.4,0,.2,1);
+            cursor: default;
+        }
+        .feature-card:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(59,130,246,0.3);
+            transform: translateY(-2px);
+        }
+        .feature-card.purple:hover { border-color: rgba(99,102,241,0.35); }
+        .feature-card.pink:hover   { border-color: rgba(239,68,68,0.35);  }
+        /* ── Icon orb ── */
+        .icon-orb {
+            width: 46px; height: 46px; border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(59,130,246,0.08);
+            border: 1px solid rgba(59,130,246,0.15);
+        }
+        .icon-orb.purple { background: rgba(99,102,241,0.08); border-color: rgba(99,102,241,0.15); }
+        .icon-orb.pink   { background: rgba(239,68,68,0.08);  border-color: rgba(239,68,68,0.15);  }
+        /* ── Stats badge ── */
+        .stat-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 10px; border-radius: 999px;
+            font-size: .68rem; font-family: 'JetBrains Mono', monospace;
+            background: rgba(59, 130, 246,0.07);
+            border: 1px solid rgba(59, 130, 246,0.15);
+            color: #3b82f6;
+        }
+        /* ── Header ── */
+        .site-header {
+            background: rgba(8,8,8,0.75);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        /* ── Status dot ── */
+        @keyframes statusPulse {
+            0%,100% { box-shadow: 0 0 0 0 rgba(0,255,157,0.6); }
+            50%      { box-shadow: 0 0 0 5px rgba(0,255,157,0); }
+        }
+        .status-dot {
+            width: 9px; height: 9px; border-radius: 50%;
+            background: #10b981;
+            animation: statusPulse 2s infinite;
+        }
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width:5px; height:5px; }
+        ::-webkit-scrollbar-track { background:#080808; }
+        ::-webkit-scrollbar-thumb { background:#222; border-radius:4px; }
+        ::-webkit-scrollbar-thumb:hover { background:#3b82f6; }
+        /* ── Prediction item ── */
+        .predict-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 8px; padding: 8px 12px;
+            cursor: pointer; transition: all .2s;
+        }
+        .predict-item:hover {
+            background: rgba(59, 130, 246,0.07);
+            border-color: rgba(59, 130, 246,0.3);
+        }
+        /* ── KPI Card ── */
+        .kpi-card {
+            background: rgba(255,255,255,0.025);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 14px; padding: 20px;
+            transition: all .25s;
+        }
+        .kpi-card:hover {
+            background: rgba(255,255,255,0.045);
+            border-color: rgba(59, 130, 246,0.2);
+            box-shadow: 0 0 24px rgba(59, 130, 246,0.06);
+        }
+        /* ── Gradient border animation ── */
+        @keyframes borderGlow {
+            0%,100% { border-color: rgba(59, 130, 246,0.2); }
+            50%      { border-color: rgba(139,92,246,0.4); }
+        }
+        /* ── Hero badge ── */
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 5px 14px; border-radius: 999px;
+            background: rgba(139,92,246,0.1);
+            border: 1px solid rgba(139,92,246,0.25);
+            color: #A78BFA; font-size:.72rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body class="cyber-grid min-h-screen flex flex-col font-inter relative">
+    <canvas id="neural-canvas" class="fixed inset-0 w-full h-full pointer-events-none opacity-25 z-0"></canvas>
+
+    <!-- Navigation Header -->
+    <header class="site-header sticky top-0 z-50 px-6 py-3.5 flex items-center justify-between">
+        <!-- Logo -->
+        <div class="logo-wrapper flex items-center gap-3">
+            <div class="logo-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            </div>
+            <div class="logo-text">FLOWCORE</div>
+        </div>
+        <!-- Nav -->
+        <nav class="hidden md:flex items-center gap-1">
+            <button onclick="switchTab('landing')" class="tab-btn active">Home</button>
+            <button onclick="switchTab('terminal')" class="tab-btn">Terminal HUD</button>
+            <button onclick="switchTab('analytics')" class="tab-btn">Analytics</button>
+            <button onclick="switchTab('workflows')" class="tab-btn">Workflows</button>
+            <button onclick="switchTab('errors')" class="tab-btn">Error Memory</button>
+            <button onclick="switchTab('replay')" class="tab-btn">Session Replay</button>
+        </nav>
+        <!-- Right controls -->
+        <div class="flex items-center gap-3">
+            <button onclick="openOnboarding()" class="hidden sm:flex items-center gap-2 px-4 py-1.5 text-xs font-mono transition-all duration-200" style="background:rgba(59, 130, 246,0.06);border:1px solid rgba(59, 130, 246,0.18);border-radius:8px;color:#3b82f6;" onmouseover="this.style.background='rgba(59, 130, 246,0.12)'" onmouseout="this.style.background='rgba(59, 130, 246,0.06)'">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                Setup Hook
+            </button>
+            <div class="status-dot" id="status-indicator"></div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main class="flex-grow flex flex-col max-w-7xl w-full mx-auto p-4 md:p-6 gap-6">
+
+        <!-- ================= LANDING TAB ================= -->
+        <section id="tab-landing" class="tab-content flex flex-col gap-16 py-12">
+            <!-- Hero Section -->
+            <div class="grid lg:grid-cols-12 gap-10 items-center">
+                <div class="lg:col-span-7 flex flex-col gap-7">
+                    <!-- Badge -->
+                    <div class="hero-badge w-fit">
+                        <span style="width:6px;height:6px;border-radius:50%;background:#3b82f6;display:inline-block;"></span>
+                        NEXT-GEN COGNITIVE TERMINAL SHELL
+                    </div>
+                    <!-- Title -->
+                    <h1 class="font-space font-bold leading-tight" style="font-size:clamp(2.6rem,5vw,4rem);color:#F8FAFC;">
+                        <span>The terminal that</span><br/>
+                        <span style="color:#3b82f6;">thinks before you type.</span>
+                    </h1>
+                    <!-- Description -->
+                    <p style="color:#64748b;font-size:1.05rem;max-width:520px;line-height:1.75;">
+                        FlowCore wraps around your shell — PowerShell, Bash, or Zsh — capturing live telemetries, clustering command patterns with DBSCAN, predicting your next move, and resolving runtime errors before you even notice them.
+                    </p>
+                    <!-- Stats row -->
+                    <div class="flex flex-wrap gap-3">
+                        <span class="stat-badge"><span style="width:5px;height:5px;border-radius:50%;background:#10b981;display:inline-block;"></span>94% Prediction Accuracy</span>
+                        <span class="stat-badge" style="background:rgba(99,102,241,0.07);border-color:rgba(99,102,241,0.2);color:#818cf8;"><span style="width:5px;height:5px;border-radius:50%;background:#6366f1;display:inline-block;"></span>Real-time Mining</span>
+                        <span class="stat-badge" style="background:rgba(239,68,68,0.07);border-color:rgba(239,68,68,0.2);color:#fc8181;"><span style="width:5px;height:5px;border-radius:50%;background:#ef4444;display:inline-block;"></span>Zero Config</span>
+                    </div>
+                    <!-- Buttons -->
+                    <div class="flex flex-wrap gap-4">
+                        <button onclick="switchTab('terminal')" class="btn-primary font-space">Launch Terminal HUD</button>
+                        <button onclick="openOnboarding()" class="btn-secondary font-space">Configure Local Hook</button>
+                    </div>
+                </div>
+
+                <!-- Cognitive Status Panel (Permanent, Static & Clean) -->
+                <div class="lg:col-span-5 relative rounded-2xl p-5 flex flex-col gap-3" style="height:440px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);backdrop-filter:blur(20px);font-family:'JetBrains Mono',monospace;font-size:.75rem;color:#E2E8F0;">
+                    <div class="flex items-center justify-between pb-3" style="border-bottom:1px solid rgba(255,255,255,0.07);">
+                        <div class="flex gap-2">
+                            <span style="width:11px;height:11px;border-radius:50%;background:rgba(239,68,68,0.7);"></span>
+                            <span style="width:11px;height:11px;border-radius:50%;background:rgba(245,158,11,0.7);"></span>
+                            <span style="width:11px;height:11px;border-radius:50%;background:rgba(16,185,129,0.7);"></span>
+                        </div>
+                        <span style="font-size:.62rem;color:#64748b;">flowcore_cognitive_core.exe</span>
+                    </div>
+                    <div class="flex-grow flex flex-col gap-2 justify-center">
+                        <p style="color:#3b82f6;"># Cognitive layer initializing...</p>
+                        <p style="color:#64748b;">[<span style="color:#10b981;">✓</span>] Markov Chain Predictor &nbsp;&nbsp;&nbsp; <span style="color:#10b981;">94%</span></p>
+                        <p style="color:#64748b;">[<span style="color:#10b981;">✓</span>] DBSCAN Pattern Miner &nbsp;&nbsp;&nbsp;&nbsp; <span style="color:#10b981;">LIVE</span></p>
+                        <p style="color:#64748b;">[<span style="color:#10b981;">✓</span>] Vector Error Indexer &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color:#10b981;">128 entries</span></p>
+                        <p style="color:#64748b;">[<span style="color:#10b981;">✓</span>] WebSocket Terminal Proxy &nbsp; <span style="color:#10b981;">:8000</span></p>
+                        <div style="margin-top:16px;padding:12px;border-radius:10px;background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.15);">
+                            <div style="display:flex;align-items:center;gap:8px;color:#818cf8;font-weight:700;margin-bottom:6px;">
+                                <span style="width:6px;height:6px;border-radius:50%;background:#6366f1;"></span>
+                                SYSTEM READY — ALL MODULES ONLINE
+                            </div>
+                            <p style="font-size:.68rem;color:#64748b;line-height:1.6;">PowerShell interceptor bound to port 8000. Source ns.ps1 to activate command loop recording.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features Grid (6 cards) -->
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div class="feature-card flex flex-col gap-4">
+                    <div class="icon-orb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
+                    <div>
+                        <h3 class="font-space font-bold text-white mb-1" style="font-size:1rem;">Workflow Intelligence</h3>
+                        <p style="font-size:.83rem;color:#4B5563;line-height:1.6;">Auto-detects 3+ repeat sequences with DBSCAN clustering. Packages them into one-click macros saved to SQLite.</p>
+                    </div>
+                    <div class="stat-badge w-fit">Sliding Window Detection</div>
+                </div>
+                <div class="feature-card purple flex flex-col gap-4">
+                    <div class="icon-orb purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.04-4.54A2.5 2.5 0 0 1 7 9.5a2.5 2.5 0 0 1 2.5-7.5z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.04-4.54A2.5 2.5 0 0 0 17 9.5a2.5 2.5 0 0 0-2.5-7.5z"/></svg></div>
+                    <div>
+                        <h3 class="font-space font-bold text-white mb-1" style="font-size:1rem;">AI Next-Command Predict</h3>
+                        <p style="font-size:.83rem;color:#4B5563;line-height:1.6;">Markov chain + TF-IDF cosine similarity predicts your next command with up to 94% accuracy. Tab to accept.</p>
+                    </div>
+                    <div class="stat-badge w-fit" style="background:rgba(139,92,246,0.07);border-color:rgba(139,92,246,0.2);color:#A78BFA;">94% Accuracy</div>
+                </div>
+                <div class="feature-card pink flex flex-col gap-4">
+                    <div class="icon-orb pink"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F472B6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                    <div>
+                        <h3 class="font-space font-bold text-white mb-1" style="font-size:1rem;">Intelligent Error Recovery</h3>
+                        <p style="font-size:.83rem;color:#4B5563;line-height:1.6;">Non-zero exits trigger vector similarity search across the error database. Fixes surface in under 200ms.</p>
+                    </div>
+                    <div class="stat-badge w-fit" style="background:rgba(255,60,172,0.07);border-color:rgba(255,60,172,0.2);color:#F472B6;">&lt;200ms Recovery</div>
+                </div>
+                <div class="feature-card flex flex-col gap-4">
+                    <div class="icon-orb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                    <div>
+                        <h3 class="font-space font-bold text-white mb-1" style="font-size:1rem;">Session Replay</h3>
+                        <p style="font-size:.83rem;color:#4B5563;line-height:1.6;">Record and replay terminal sessions with scrubber controls. Supports 1x, 2x, 4x playback speed.</p>
+                    </div>
+                    <div class="stat-badge w-fit">1x · 2x · 4x Speed</div>
+                </div>
+                <div class="feature-card purple flex flex-col gap-4">
+                    <div class="icon-orb purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+                    <div>
+                        <h3 class="font-space font-bold text-white mb-1" style="font-size:1rem;">Live Analytics HUD</h3>
+                        <p style="font-size:.83rem;color:#4B5563;line-height:1.6;">Command velocity charts, activity heatmaps, efficiency scores, and top-command doughnut charts update in real time.</p>
+                    </div>
+                    <div class="stat-badge w-fit" style="background:rgba(139,92,246,0.07);border-color:rgba(139,92,246,0.2);color:#A78BFA;">Real-time Charts</div>
+                </div>
+                <div class="feature-card pink flex flex-col gap-4">
+                    <div class="icon-orb pink"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F472B6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
+                    <div>
+                        <h3 class="font-space font-bold text-white mb-1" style="font-size:1rem;">Context-Aware Automations</h3>
+                        <p style="font-size:.83rem;color:#4B5563;line-height:1.6;">Generates PowerShell functions and Bash aliases from detected patterns. One click appends to your shell profile.</p>
+                    </div>
+                    <div class="stat-badge w-fit" style="background:rgba(255,60,172,0.07);border-color:rgba(255,60,172,0.2);color:#F472B6;">PS + Bash + Zsh</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TERMINAL TAB ================= -->
+        <section id="tab-terminal" class="tab-content hidden flex-grow grid lg:grid-cols-12 gap-5 min-h-[500px]">
+            <!-- Main Terminal -->
+            <div class="lg:col-span-8 flex flex-col rounded-2xl overflow-hidden relative z-10" style="background:#050505;border:1px solid rgba(255,255,255,0.07);">
+                <!-- Terminal Chrome -->
+                <div class="flex items-center justify-between px-4 py-3" style="background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">
+                    <div class="flex items-center gap-2">
+                        <span style="width:11px;height:11px;border-radius:50%;background:#FF5F57;"></span>
+                        <span style="width:11px;height:11px;border-radius:50%;background:#FFBD2E;"></span>
+                        <span style="width:11px;height:11px;border-radius:50%;background:#28CA41;"></span>
+                        <span class="font-mono ml-3" style="font-size:.72rem;color:#4B5563;display:flex;align-items:center;gap:6px;">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                            PowerShell Interceptor Active
+                        </span>
+                    </div>
+                    <div class="hidden sm:flex items-center gap-5" style="font-size:.68rem;font-family:'JetBrains Mono',monospace;color:#4B5563;">
+                        <div class="flex items-center gap-2">
+                            <span>CPU</span>
+                            <div style="width:52px;height:4px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;">
+                                <div id="cpu-bar" class="h-full transition-all duration-500" style="width:25%;background:linear-gradient(90deg,#3b82f6,#6366f1);"></div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span>MEM</span>
+                            <div style="width:52px;height:4px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;">
+                                <div id="mem-bar" class="h-full transition-all duration-500" style="width:62%;background:linear-gradient(90deg,#6366f1,#ef4444);"></div>
+                            </div>
+                        </div>
+                        <button onclick="clearTerminal()" style="padding:4px;border-radius:6px;color:#4B5563;transition:all .2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='#4B5563'" title="Clear">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <!-- xterm -->
+                <div id="terminal-container" class="flex-grow p-3 overflow-hidden scanlines" style="min-height:350px;background:#050505;position:relative;"></div>
+                <!-- Ghost prediction bar -->
+                <div class="flex justify-between items-center px-4 py-2" style="background:rgba(255,255,255,0.02);border-top:1px solid rgba(255,255,255,0.05);font-family:'JetBrains Mono',monospace;font-size:.7rem;">
+                    <div style="display:flex;align-items:center;gap:8px;color:#4B5563;">
+                        <span style="width:6px;height:6px;border-radius:50%;background:#3b82f6;animation:statusPulse 2s infinite;"></span>
+                        <span>Next:</span>
+                        <span id="ghost-helper-text" style="color:#3b82f6;font-weight:700;"></span>
+                    </div>
+                    <div style="color:#374151;font-size:.65rem;">
+                        <kbd style="padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#9CA3AF;">Tab</kbd>
+                        or
+                        <kbd style="padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#9CA3AF;">&rarr;</kbd>
+                        to accept
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="lg:col-span-4 flex flex-col gap-4">
+                <!-- Predictions -->
+                <div class="glass rounded-2xl p-5 flex flex-col gap-4">
+                    <div class="flex items-center justify-between pb-3" style="border-bottom:1px solid rgba(255,255,255,0.06);">
+                        <h3 class="font-space font-semibold flex items-center gap-2" style="font-size:.85rem;color:#F8FAFC;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            Command Auto-Predict
+                        </h3>
+                        <span class="stat-badge" style="font-size:.6rem;padding:2px 8px;">LIVE</span>
+                    </div>
+                    <div id="predictions-panel" class="flex flex-col gap-2 font-mono max-h-[200px] overflow-y-auto" style="font-size:.78rem;">
+                        <p style="font-size:.75rem;color:#4B5563;font-style:italic;">Run a command to trigger predictions.</p>
+                    </div>
+                </div>
+
+                <!-- Behavior Mining -->
+                <div class="glass glass-purple rounded-2xl p-5 flex flex-col gap-4">
+                    <h3 class="font-space font-semibold flex items-center gap-2 pb-3" style="font-size:.85rem;color:#F8FAFC;border-bottom:1px solid rgba(255,255,255,0.06);">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        Behavior Mining
+                    </h3>
+                    <div id="pattern-alert-box" class="flex flex-col gap-3">
+                        <p style="font-size:.75rem;color:#4B5563;font-style:italic;">Scanning command history for sequences...</p>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="glass rounded-2xl p-5 flex flex-col gap-3">
+                    <h3 class="font-space font-semibold" style="font-size:.85rem;color:#F8FAFC;margin-bottom:4px;">Quick Actions</h3>
+                    <button onclick="switchTab('analytics')" class="predict-item flex items-center gap-3 w-full text-left">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                        <span style="font-size:.78rem;color:#9CA3AF;">View Analytics</span>
+                    </button>
+                    <button onclick="switchTab('workflows')" class="predict-item flex items-center gap-3 w-full text-left">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        <span style="font-size:.78rem;color:#9CA3AF;">Manage Workflows</span>
+                    </button>
+                    <button onclick="switchTab('errors')" class="predict-item flex items-center gap-3 w-full text-left">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F472B6" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        <span        <!-- ================= ANALYTICS TAB ================= -->
+        <section id="tab-analytics" class="tab-content hidden flex flex-col gap-6">
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="kpi-card flex flex-col gap-2">
+                    <span style="font-size:.7rem;color:#4B5563;font-family:'Space Grotesk',sans-serif;letter-spacing:.06em;">EFFICIENCY SCORE</span>
+                    <div class="flex items-baseline gap-2">
+                        <span id="stat-efficiency" class="font-space font-bold" style="font-size:2rem;color:#10b981;">87%</span>
+                        <span style="font-size:.65rem;color:#10b981;font-family:'JetBrains Mono',monospace;font-weight:700;">+2.4%</span>
+                    </div>
+                    <div class="stat-badge w-fit mt-1">vs last session</div>
+                </div>
+                <div class="kpi-card flex flex-col gap-2">
+                    <span style="font-size:.7rem;color:#4B5563;font-family:'Space Grotesk',sans-serif;letter-spacing:.06em;">COMMANDS LOGGED</span>
+                    <div class="flex items-baseline gap-2">
+                        <span id="stat-total-cmds" class="font-space font-bold" style="font-size:2rem;color:#F8FAFC;">0</span>
+                    </div>
+                    <div class="stat-badge w-fit mt-1">total recorded</div>
+                </div>
+                <div class="kpi-card flex flex-col gap-2">
+                    <span style="font-size:.7rem;color:#4B5563;font-family:'Space Grotesk',sans-serif;letter-spacing:.06em;">WORKFLOWS TRIGGERED</span>
+                    <div class="flex items-baseline gap-2">
+                        <span id="stat-workflows-run" class="font-space font-bold" style="font-size:2rem;color:#A78BFA;">0</span>
+                    </div>
+                    <div class="stat-badge w-fit mt-1" style="background:rgba(139,92,246,0.07);border-color:rgba(139,92,246,0.2);color:#A78BFA;">automations run</div>
+                </div>
+                <div class="kpi-card flex flex-col gap-2">
+                    <span style="font-size:.7rem;color:#4B5563;font-family:'Space Grotesk',sans-serif;letter-spacing:.06em;">AVG EXECUTION</span>
+                    <div class="flex items-baseline gap-2">
+                        <span id="stat-avg-dur" class="font-space font-bold" style="font-size:2rem;color:#3b82f6;">0ms</span>
+                    </div>
+                    <div class="stat-badge w-fit mt-1">per command</div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid md:grid-cols-12 gap-5">
+                <div class="md:col-span-8 glass rounded-2xl p-5 flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-space font-semibold" style="font-size:.9rem;color:#F8FAFC;">Command Velocity</h3>
+                        <span class="stat-badge">Daily Activity</span>
+                    </div>
+                    <div class="relative" style="height:240px;">
+                        <canvas id="velocityChart"></canvas>
+                    </div>
+                </div>
+                <div class="md:col-span-4 glass glass-purple rounded-2xl p-5 flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-space font-semibold" style="font-size:.9rem;color:#F8FAFC;">Top Commands</h3>
+                        <span class="stat-badge" style="background:rgba(139,92,246,0.07);border-color:rgba(139,92,246,0.2);color:#A78BFA;">Most Active</span>
+                    </div>
+                    <div class="relative" style="height:240px;">
+                        <canvas id="mostUsedChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Heatmap -->
+            <div class="glass rounded-2xl p-5 flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-space font-semibold" style="font-size:.9rem;color:#F8FAFC;">Activity Heatmap</h3>
+                    <span class="stat-badge">Day &amp; Hour Density</span>
+                </div>
+                <div id="heatmap-grid" class="grid grid-cols-24 gap-1 overflow-x-auto py-2" style="min-width:600px;"></div>
+                <div class="flex items-center gap-3" style="font-size:.7rem;color:#4B5563;font-family:'JetBrains Mono',monospace;">
+                    <span>Low</span>
+                    <div class="flex gap-1">
+                        <span style="width:14px;height:14px;background:rgba(255,255,255,0.04);border-radius:3px;display:inline-block;"></span>
+                        <span style="width:14px;height:14px;background:rgba(59, 130, 246,0.2);border-radius:3px;display:inline-block;"></span>
+                        <span style="width:14px;height:14px;background:rgba(59, 130, 246,0.5);border-radius:3px;display:inline-block;"></span>
+                        <span style="width:14px;height:14px;background:#3b82f6;border-radius:3px;display:inline-block;"></span>
+                    </div>
+                    <span>High</span>
+                </div>
+            </div>
+        </section>t rounded"></span>
+                    </div>
+                    <span>High Activity</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= WORKFLOWS TAB ================= -->
+        <section id="tab-workflows" class="tab-content hidden flex flex-col gap-6">
+            <div class="flex items-center justify-between border-b border-gray-850 pb-4">
+                <div>
+                    <h2 class="font-space font-bold text-2xl text-white">Workflow Intelligence</h2>
+                    <p class="text-sm text-mutedGray">Manage saved sequences and triggers</p>
+                </div>
+                <button onclick="openCreateWorkflowModal()" class="px-4 py-2 rounded bg-cyanAccent text-bgDark text-sm font-space font-bold hover:bg-white transition duration-200">
+                    Create Custom Workflow
+                </button>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6" id="workflows-grid">
+                <!-- Dynamically populated -->
+            </div>
+        </section>
+
+        <!-- ================= ERROR INTELLIGENCE TAB ================= -->
+        <section id="tab-errors" class="tab-content hidden flex flex-col gap-6">
+            <div>
+                <h2 class="font-space font-bold text-2xl text-white">Error Recovery Engine</h2>
+                <p class="text-sm text-mutedGray">Vectorized database of past execution errors and AI-generated solutions</p>
+            </div>
+            <div class="grid lg:grid-cols-3 gap-5">
+                <!-- Error History List -->
+                <div class="lg:col-span-1 glass rounded-2xl overflow-hidden flex flex-col" style="max-height:520px;">
+                    <div class="px-4 py-3 flex items-center gap-2" style="background:rgba(255,60,172,0.05);border-bottom:1px solid rgba(255,255,255,0.06);">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F472B6" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        <span style="font-size:.68rem;font-family:'JetBrains Mono',monospace;color:#F472B6;letter-spacing:.08em;">ERROR CAPTURES</span>
+                    </div>
+                    <div class="flex-grow overflow-y-auto" id="error-list"></div>
+                </div>
+
+                <!-- Fix Details -->
+                <div class="lg:col-span-2 flex flex-col gap-5">
+                    <div class="glass glass-pink rounded-2xl p-6 flex flex-col gap-5">
+                        <div class="flex items-center justify-between pb-4" style="border-bottom:1px solid rgba(255,255,255,0.06);">
+                            <h3 class="font-space font-bold text-white" style="font-size:1rem;">Cognitive Error Resolver</h3>
+                            <span class="stat-badge" style="background:rgba(255,60,172,0.07);border-color:rgba(255,60,172,0.2);color:#F472B6;">A.I. Solver</span>
+                        </div>
+                        <div class="flex flex-col gap-4">
+                            <div>
+                                <label style="font-size:.68rem;color:#4B5563;font-family:'JetBrains Mono',monospace;letter-spacing:.06em;display:block;margin-bottom:6px;">ERROR / STDERR</label>
+                                <textarea id="err-resolver-stderr" style="width:100%;height:90px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:10px 12px;font-size:.75rem;font-family:'JetBrains Mono',monospace;color:#F472B6;outline:none;resize:none;transition:border-color .2s;" placeholder="Paste error stderr here to query fixes..." onfocus="this.style.borderColor='rgba(255,60,172,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.07)'"></textarea>
+                            </div>
+                            <button onclick="resolveErrorFromForm()" class="btn-primary font-space w-full flex items-center justify-center gap-2" style="background:linear-gradient(135deg,#6366f1,#ef4444);">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/></svg>
+                                Search Vector Store &amp; Resolve
+                            </button>
+                            <div class="hidden flex-col gap-3" id="error-fix-response-box" style="background:rgba(59, 130, 246,0.04);border:1px solid rgba(59, 130, 246,0.12);border-radius:12px;padding:16px;">
+                                <div class="flex justify-between items-center pb-2" style="border-bottom:1px solid rgba(59, 130, 246,0.08);">
+                                    <span style="font-size:.78rem;color:#3b82f6;font-weight:700;font-family:'Space Grotesk',sans-serif;" id="resolved-err-type"></span>
+                                    <span style="font-size:.65rem;font-family:'JetBrains Mono',monospace;color:#4B5563;" id="resolved-confidence"></span>
+                                </div>
+                                <div style="font-size:.78rem;font-family:'JetBrains Mono',monospace;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;color:#10b981;" id="resolved-fix-text"></div>
+                                <div class="flex justify-end gap-2">
+                                    <button onclick="saveFeedback(true)" style="padding:6px 14px;border-radius:6px;background:rgba(0,255,157,0.08);border:1px solid rgba(0,255,157,0.2);color:#10b981;font-size:.72rem;transition:all .2s;" onmouseover="this.style.background='rgba(0,255,157,0.15)'" onmouseout="this.style.background='rgba(0,255,157,0.08)'">Apply Fix</button>
+                                    <button onclick="saveFeedback(false)" style="padding:6px 14px;border-radius:6px;background:rgba(255,60,172,0.08);border:1px solid rgba(255,60,172,0.2);color:#F472B6;font-size:.72rem;transition:all .2s;" onmouseover="this.style.background='rgba(255,60,172,0.15)'" onmouseout="this.style.background='rgba(255,60,172,0.08)'">Submit Alternative</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= SESSION REPLAY TAB ================= -->
+        <section id="tab-replay" class="tab-content hidden flex flex-col gap-6">
+            <div>
+                <h2 class="font-space font-bold text-white" style="font-size:1.5rem;">Intelligent Session Replay</h2>
+                <p style="font-size:.83rem;color:#4B5563;margin-top:3px;">Play back recorded terminal sessions, analyze command flows &amp; replay at variable speed</p>
+            </div>
+
+            <div class="grid lg:grid-cols-12 gap-5">
+                <!-- Session List -->
+                <div class="lg:col-span-4 glass rounded-2xl overflow-hidden flex flex-col" style="max-height:520px;">
+                    <div class="px-4 py-3 flex items-center gap-2" style="background:rgba(139,92,246,0.05);border-bottom:1px solid rgba(255,255,255,0.06);">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span style="font-size:.68rem;font-family:'JetBrains Mono',monospace;color:#A78BFA;letter-spacing:.08em;">RECORDED SESSIONS</span>
+                    </div>
+                    <div class="flex-grow overflow-y-auto" id="sessions-list"></div>
+                </div>
+
+                <!-- Replay HUD -->
+                <div class="lg:col-span-8 rounded-2xl overflow-hidden flex flex-col" style="min-height:420px;background:#050505;border:1px solid rgba(255,255,255,0.07);">
+                    <div class="flex items-center justify-between px-4 py-3" style="background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);">
+                        <span style="font-size:.72rem;font-family:'JetBrains Mono',monospace;color:#4B5563;" id="replay-title">No Session Loaded</span>
+                        <span style="padding:2px 8px;border-radius:4px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);color:#A78BFA;font-size:.62rem;font-family:'JetBrains Mono',monospace;">REPLAY MODE</span>
+                    </div>
+                    <div id="replay-terminal-container" class="flex-grow p-4 overflow-hidden scanlines" style="min-height:280px;background:#050505;"></div>
+
+                    <!-- Player Controls -->
+                    <div class="flex flex-col gap-3 p-4" style="background:rgba(255,255,255,0.02);border-top:1px solid rgba(255,255,255,0.05);">
+                        <div class="flex items-center gap-4">
+                            <button onclick="toggleReplayPlay()" id="replay-play-btn" style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#6366f1);display:flex;align-items:center;justify-content:center;transition:transform .2s,box-shadow .2s;box-shadow:0 0 16px rgba(59, 130, 246,0.25);" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                                <svg id="play-icon" width="14" height="14" viewBox="0 0 24 24" fill="#080808"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            </button>
+                            <div class="flex-grow">
+                                <input type="range" id="replay-scrubber" min="0" max="100" value="0" oninput="scrubReplay(this.value)" style="width:100%;accent-color:#3b82f6;height:3px;background:rgba(255,255,255,0.08);border-radius:4px;cursor:pointer;">
+                            </div>
+                            <span id="replay-timer" style="font-size:.7rem;font-family:'JetBrains Mono',monospace;color:#4B5563;">0/0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div class="flex gap-2">
+                                <button onclick="setReplaySpeed(1)" class="speed-btn" style="padding:3px 10px;border-radius:6px;border:1px solid rgba(59, 130, 246,0.25);background:rgba(59, 130, 246,0.08);font-size:.7rem;font-family:'JetBrains Mono',monospace;color:#3b82f6;">1x</button>
+                                <button onclick="setReplaySpeed(2)" class="speed-btn" style="padding:3px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.07);background:rgba(255,255,255,0.03);font-size:.7rem;font-family:'JetBrains Mono',monospace;color:#4B5563;">2x</button>
+                                <button onclick="setReplaySpeed(4)" class="speed-btn" style="padding:3px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.07);background:rgba(255,255,255,0.03);font-size:.7rem;font-family:'JetBrains Mono',monospace;color:#4B5563;">4x</button>
+                            </div>
+                            <span style="font-size:.65rem;font-family:'JetBrains Mono',monospace;color:#374151;">Local API Session Recorder</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer style="border-top:1px solid rgba(255,255,255,0.05);background:rgba(8,8,8,0.8);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,rgba(59, 130, 246,0.15),rgba(139,92,246,0.15));border:1px solid rgba(59, 130, 246,0.2);display:flex;align-items:center;justify-content:center;">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            </div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#374151;">FLOWCORE &copy; 2026 &mdash; Build the terminal that thinks.</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;">
+            <span class="stat-badge" style="cursor:default;">v1.0 STABLE</span>
+            <button onclick="switchTab('terminal')" style="font-size:.7rem;font-family:'JetBrains Mono',monospace;color:#4B5563;transition:color .2s;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#4B5563'">Open Terminal &rarr;</button>
+        </div>
+    </footer>
+
+    <!-- ================= MODALS & OVERLAYS ================= -->
+
+    <!-- Command Palette (Ctrl+K) -->
+    <div id="cmd-palette" class="fixed inset-0 z-[100] flex items-start justify-center pt-24 hidden" style="background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);" onclick="if(event.target===this)closeCmdPalette()">
+        <div style="width:100%;max-width:560px;background:rgba(12,12,12,0.97);border:1px solid rgba(59, 130, 246,0.2);border-radius:16px;overflow:hidden;box-shadow:0 0 60px rgba(59, 130, 246,0.1),0 32px 80px rgba(0,0,0,0.8);">
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.06);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input id="cmd-input" autofocus placeholder="Search tabs, run commands..." oninput="filterCmdPalette(this.value)" style="flex:1;background:transparent;border:none;outline:none;font-family:'Space Grotesk',sans-serif;font-size:.9rem;color:#F8FAFC;" />
+                <kbd style="padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#4B5563;font-size:.65rem;font-family:'JetBrains Mono',monospace;">ESC</kbd>
+            </div>
+            <div id="cmd-palette-results" style="max-height:320px;overflow-y:auto;padding:8px;"></div>
+            <div style="padding:10px 16px;border-top:1px solid rgba(255,255,255,0.05);display:flex;gap:16px;">
+                <span style="font-size:.65rem;font-family:'JetBrains Mono',monospace;color:#374151;"><kbd style="padding:1px 5px;border-radius:3px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#6B7280;">↑↓</kbd> navigate</span>
+                <span style="font-size:.65rem;font-family:'JetBrains Mono',monospace;color:#374151;"><kbd style="padding:1px 5px;border-radius:3px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#6B7280;">↵</kbd> select</span>
+                <span style="font-size:.65rem;font-family:'JetBrains Mono',monospace;color:#374151;"><kbd style="padding:1px 5px;border-radius:3px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#6B7280;">Ctrl+K</kbd> toggle</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Onboarding Setup Modal -->
+    <div id="onboarding-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden" style="background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);">
+        <div style="background:rgba(12,12,12,0.97);border:1px solid rgba(255,255,255,0.08);border-radius:20px;max-width:480px;width:100%;padding:28px;position:relative;box-shadow:0 0 60px rgba(59, 130, 246,0.08),0 32px 80px rgba(0,0,0,0.8);">
+            <button onclick="closeOnboarding()" style="position:absolute;top:16px;right:16px;color:#4B5563;transition:color .2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#4B5563'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            <!-- Header -->
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+                <div style="width:44px;height:44px;border-radius:14px;background:rgba(59, 130, 246,0.08);border:1px solid rgba(59, 130, 246,0.2);display:flex;align-items:center;justify-content:center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+                </div>
+                <div>
+                    <h3 class="font-space font-bold text-white" style="font-size:1.1rem;">Setup Shell Integration</h3>
+                    <p style="font-size:.75rem;color:#4B5563;margin-top:2px;">Connect your terminal to the AI layer</p>
+                </div>
+            </div>
+            <!-- Steps -->
+            <div class="flex flex-col gap-5" style="font-family:'JetBrains Mono',monospace;">
+                <div style="padding:14px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">
+                    <span style="font-size:.65rem;color:#3b82f6;letter-spacing:.1em;font-weight:700;">STEP 1</span>
+                    <p style="font-size:.75rem;color:#6B7280;margin-top:6px;">The integration script is in your project directory as <span style="color:#3b82f6;">ns.ps1</span></p>
+                </div>
+                <div style="padding:14px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">
+                    <span style="font-size:.65rem;color:#3b82f6;letter-spacing:.1em;font-weight:700;">STEP 2 — ACTIVATE IN POWERSHELL</span>
+                    <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px 12px;">
+                        <code id="powershell-install-command" style="font-size:.78rem;color:#10b981;">. .\ns</code>
+                        <button onclick="copyCommand()" style="color:#4B5563;transition:color .2s;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#4B5563'">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div style="padding:14px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">
+                    <span style="font-size:.65rem;color:#3b82f6;letter-spacing:.1em;font-weight:700;">STEP 3 — TEST</span>
+                    <p style="font-size:.75rem;color:#6B7280;margin-top:6px;">Run any command in PowerShell and watch predictions update in real time.</p>
+                </div>
+            </div>
+            <button onclick="closeOnboarding()" class="btn-primary font-space metallic-shine w-full mt-6" style="text-align:center;">Done &amp; Launch Terminal</button>
+        </div>
+    </div>
+
+    <!-- Create Workflow Modal -->
+    <div id="workflow-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden" style="background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);">
+        <div style="background:rgba(12,12,12,0.97);border:1px solid rgba(255,255,255,0.08);border-radius:20px;max-width:440px;width:100%;padding:28px;position:relative;box-shadow:0 32px 80px rgba(0,0,0,0.8);">
+            <button onclick="closeCreateWorkflowModal()" style="position:absolute;top:16px;right:16px;color:#4B5563;transition:color .2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#4B5563'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            <h3 class="font-space font-bold text-white mb-1" style="font-size:1.1rem;">Create Custom Workflow</h3>
+            <p style="font-size:.75rem;color:#4B5563;margin-bottom:20px;">Define a repeatable command sequence</p>
+            <div class="flex flex-col gap-4">
+                <div>
+                    <label style="font-size:.68rem;color:#4B5563;font-family:'JetBrains Mono',monospace;letter-spacing:.06em;display:block;margin-bottom:6px;">WORKFLOW NAME</label>
+                    <input type="text" id="workflow-name-input" style="width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:10px 12px;font-family:'Inter',sans-serif;font-size:.85rem;color:#F8FAFC;outline:none;transition:border-color .2s;" placeholder="e.g. Build and Deploy" onfocus="this.style.borderColor='rgba(59, 130, 246,0.35)'" onblur="this.style.borderColor='rgba(255,255,255,0.07)'">
+                </div>
+                <div>
+                    <label style="font-size:.68rem;color:#4B5563;font-family:'JetBrains Mono',monospace;letter-spacing:.06em;display:block;margin-bottom:6px;">STEPS (ONE COMMAND PER LINE)</label>
+                    <textarea id="workflow-steps-input" style="width:100%;height:120px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:#3b82f6;outline:none;resize:none;transition:border-color .2s;" placeholder="npm run build&#10;docker build -t app .&#10;docker run app" onfocus="this.style.borderColor='rgba(59, 130, 246,0.35)'" onblur="this.style.borderColor='rgba(255,255,255,0.07)'"></textarea>
+                </div>
+                <button onclick="saveWorkflow()" class="btn-primary font-space w-full metallic-shine" style="text-align:center;">Save Workflow</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Automation Alias Generator Modal -->
+
+    <!-- Client-Side Javascript Logic -->
+    <script>
+        // Tab switching
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('text-cyanAccent', 'active');
+                btn.classList.add('text-mutedGray');
+            });
+
+            // Find matching tab button
+            const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.textContent.toLowerCase().includes(tabId === 'landing' ? 'home' : tabId.replace('-', ' ')));
+            if (activeBtn) {
+                activeBtn.classList.remove('text-mutedGray');
+                activeBtn.classList.add('text-cyanAccent', 'active');
+            }
+
+            // Trigger specific actions when opening tabs
+            if (tabId === 'terminal') {
+                setTimeout(() => {
+                    fitAddon.fit();
+                    term.focus();
+                }, 50);
+            } else if (tabId === 'analytics') {
+                loadAnalytics();
+            } else if (tabId === 'workflows') {
+                loadWorkflows();
+            } else if (tabId === 'errors') {
+                loadErrors();
+            } else if (tabId === 'replay') {
+                loadSessions();
+            }
+        }
+
+        // Onboarding Modals
+        function openOnboarding() {
+            document.getElementById('onboarding-modal').classList.remove('hidden');
+        }
+        function closeOnboarding() {
+            document.getElementById('onboarding-modal').classList.add('hidden');
+        }
+
+        function copyCommand() {
+            const cmd = document.getElementById('powershell-install-command').textContent;
+            navigator.clipboard.writeText(cmd);
+            alert("Command copied to clipboard!");
+        }
+
+        // Workflow Modal
+        function openCreateWorkflowModal() {
+            document.getElementById('workflow-modal').classList.remove('hidden');
+        }
+        function closeCreateWorkflowModal() {
+            document.getElementById('workflow-modal').classList.add('hidden');
+        }
+
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // --- Terminal HUD Logic (xterm.js) ---
+        const term = new Terminal({
+            cursorBlink: true,
+            theme: {
+                background: '#0A0E1A',
+                foreground: '#E5E7EB',
+                cursor: '#3b82f6',
+                selectionBackground: 'rgba(59, 130, 246, 0.3)',
+                black: '#000000',
+                red: '#ef4444',
+                green: '#10b981',
+                yellow: '#FFD700',
+                blue: '#7B2FFF',
+                magenta: '#ef4444',
+                cyan: '#3b82f6',
+                white: '#E5E7EB'
+            },
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: 13,
+            lineHeight: 1.2
+        });
+
+        const terminalContainer = document.getElementById('terminal-container');
+        term.open(terminalContainer);
+        
+        // Add fit addon
+        const fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+        fitAddon.fit();
+        
+        window.addEventListener('resize', () => {
+            fitAddon.fit();
+        });
+
+        // WebSocket Terminal Connection
+        const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const wsUrl = `${wsProtocol}//${window.location.host}/ws/terminal`;
+        let socket;
+        let ghostText = "";
+
+        function connectTerminal() {
+            socket = new WebSocket(wsUrl);
+
+            socket.onopen = () => {
+                document.getElementById('status-indicator').className = "w-2.5 h-2.5 rounded-full bg-greenAccent animate-ping";
+            };
+
+            socket.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                
+                if (msg.type === "stdout" || msg.type === "stderr") {
+                    term.write(msg.text);
+                } 
+                else if (msg.type === "ghost") {
+                    ghostText = msg.prediction;
+                    document.getElementById('ghost-helper-text').textContent = ghostText;
+                }
+                else if (msg.type === "predictions") {
+                    renderFloatingPredictions(msg.predictions);
+                }
+                else if (msg.type === "error_toast") {
+                    triggerErrorToast(msg);
+                }
+            };
+
+            socket.onclose = () => {
+                document.getElementById('status-indicator').className = "w-2.5 h-2.5 rounded-full bg-pinkAccent";
+                term.write("\r\n\x1b[31mConnection lost. Retrying in 5s...\x1b[0m\r\n");
+                setTimeout(connectTerminal, 5000);
+            };
+        }
+
+        connectTerminal();
+
+        // Send keys to WebSocket
+        term.onKey((e) => {
+            const key = e.key;
+            
+            // Check for right arrow or Tab to accept ghost autocomplete
+            if ((key === "\x1b[C" || key === "\t") && ghostText) {
+                // If they tab/right-arrow, accept ghost prediction
+                socket.send(JSON.stringify({
+                    "type": "autocomplete_accept",
+                    "command": term.buffer.active.getLine(term.buffer.active.cursorY + term.buffer.active.viewportY).translateToString().split(">")[1].trim() + ghostText
+                }));
+                // clear ghost text
+                ghostText = "";
+                document.getElementById('ghost-helper-text').textContent = "";
+                e.domEvent.preventDefault();
+                return;
+            }
+
+            socket.send(JSON.stringify({
+                "type": "key",
+                "key": key
+            }));
+        });
+
+        function clearTerminal() {
+            term.clear();
+            socket.send(JSON.stringify({
+                "type": "key",
+                "key": "\r"
+            }));
+        }
+
+        function renderFloatingPredictions(predictions) {
+            const panel = document.getElementById('predictions-panel');
+            panel.innerHTML = "";
+            if (!predictions || predictions.length === 0) {
+                panel.innerHTML = `<p class="text-xs text-mutedGray italic">No predictions available.</p>`;
+                return;
+            }
+            predictions.forEach((p, idx) => {
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-bgDark border border-gray-850 p-2 rounded hover:border-cyanAccent cursor-pointer transition";
+                div.onclick = () => {
+                    // Send to terminal
+                    socket.send(JSON.stringify({
+                        "type": "autocomplete_accept",
+                        "command": p.command
+                    }));
+                };
+                div.innerHTML = `
+                    <span class="text-xs text-white">${p.command}</span>
+                    <span class="text-[10px] text-cyanAccent px-1 rounded bg-cyanAccent/10">${p.confidence}%</span>
+                `;
+                panel.appendChild(div);
+            });
+        }
+
+        function triggerErrorToast(msg) {
+            // Check if there is an existing toast, remove it
+            const existing = document.getElementById('error-recovery-toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.id = "error-recovery-toast";
+            toast.id = "error-recovery-toast";
+            toast.style.cssText = "position:fixed;bottom:20px;right:20px;background:rgba(12,12,12,0.97);border:1px solid rgba(255,60,172,0.25);border-left:3px solid #F472B6;border-radius:12px;padding:16px;max-width:340px;width:100%;z-index:9999;box-shadow:0 0 30px rgba(255,60,172,0.1),0 16px 40px rgba(0,0,0,0.8);display:flex;flex-direction:column;gap:10px;";
+            toast.innerHTML = `
+                <div class="flex items-center justify-between border-b border-gray-850 pb-1">
+                    <span class="text-xs font-bold text-pinkAccent flex items-center gap-1.5">
+                        <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i> RUNTIME ERROR CAPTURED
+                    </span>
+                    <button onclick="document.getElementById('error-recovery-toast').remove()" class="text-mutedGray hover:text-white">
+                        <i data-lucide="x" class="w-3 h-3"></i>
+                    </button>
+                </div>
+                <p class="text-[11px] text-mutedGray font-mono truncate">${msg.stderr}</p>
+                <div class="bg-bgDark p-2 rounded border border-cyanAccent/15 flex flex-col gap-1 mt-1">
+                    <span class="text-[10px] text-cyanAccent font-bold">SUGGESTED RECOVERY FIX:</span>
+                    <code class="text-xs text-greenAccent font-mono">${msg.fix_suggestion}</code>
+                </div>
+                <div class="flex justify-end gap-2 mt-2">
+                    <button onclick="runQuickFix('${msg.fix_suggestion.replace("Run:", "").trim()}')" class="px-2.5 py-1 rounded bg-cyanAccent text-bgDark text-[11px] font-bold">Execute Fix</button>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            lucide.createIcons();
+        }
+
+        function runQuickFix(cmd) {
+            // Write commands directly to terminal
+            socket.send(JSON.stringify({
+                "type": "autocomplete_accept",
+                "command": cmd
+            }));
+            const toast = document.getElementById('error-recovery-toast');
+            if (toast) toast.remove();
+        }
+
+        // --- Analytics Charts & Data ---
+        let velocityChart = null;
+        let mostUsedChart = null;
+
+        async function loadAnalytics() {
+            try {
+                const response = await fetch("/api/analytics/summary");
+                const summary = await response.json();
+
+                document.getElementById('stat-efficiency').textContent = `${summary.efficiency_score}%`;
+                // Add styling dynamically depending on score
+                if (summary.efficiency_score > 80) {
+                    document.getElementById('stat-efficiency').className = "text-3xl font-bold font-space text-greenAccent";
+                } else if (summary.efficiency_score > 60) {
+                    document.getElementById('stat-efficiency').className = "text-3xl font-bold font-space text-orangeAccent";
+                } else {
+                    document.getElementById('stat-efficiency').className = "text-3xl font-bold font-space text-pinkAccent";
+                }
+
+                document.getElementById('stat-total-cmds').textContent = summary.total_commands;
+                document.getElementById('stat-workflows-run').textContent = summary.workflows_triggered;
+                document.getElementById('stat-avg-dur').textContent = `${summary.avg_duration_ms}ms`;
+
+                // Load velocity chart
+                const velocityRes = await fetch("/api/analytics/velocity");
+                const velocityData = await velocityRes.json();
+
+                const vLabels = velocityData.map(d => d.date);
+                const vCounts = velocityData.map(d => d.commands);
+
+                if (velocityChart) velocityChart.destroy();
+                const vCtx = document.getElementById('velocityChart').getContext('2d');
+                velocityChart = new Chart(vCtx, {
+                    type: 'line',
+                    data: {
+                        labels: vLabels,
+                        datasets: [{
+                            label: 'Commands Run',
+                            data: vCounts,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                            fill: true,
+                            tension: 0.3,
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { grid: { color: '#1F2937' }, ticks: { color: '#9CA3AF' } },
+                            x: { grid: { display: false }, ticks: { color: '#9CA3AF' } }
+                        }
+                    }
+                });
+
+                // Load most used commands chart
+                const topCmds = summary.most_used_commands || [];
+                const topLabels = topCmds.map(c => c.command);
+                const topCounts = topCmds.map(c => c.count);
+
+                if (mostUsedChart) mostUsedChart.destroy();
+                const muCtx = document.getElementById('mostUsedChart').getContext('2d');
+                mostUsedChart = new Chart(muCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: topLabels,
+                        datasets: [{
+                            data: topCounts,
+                            backgroundColor: ['#7B2FFF', '#3b82f6', '#ef4444', '#FFD700', '#10b981', '#FF6B35', '#9CA3AF']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { grid: { color: '#1F2937' }, ticks: { color: '#9CA3AF' } },
+                            x: { grid: { display: false }, ticks: { color: '#9CA3AF', maxRotation: 45, minRotation: 45 } }
+                        }
+                    }
+                });
+
+                // Load Heatmap
+                const heatmapRes = await fetch("/api/analytics/heatmap");
+                const heatmapData = await heatmapRes.json();
+                renderHeatmap(heatmapData);
+
+            } catch (error) {
+                console.error("Error loading analytics:", error);
+            }
+        }
+
+        function renderHeatmap(data) {
+            const container = document.getElementById('heatmap-grid');
+            container.innerHTML = "";
+            
+            // Create cells
+            data.forEach(cell => {
+                const cellEl = document.createElement('div');
+                let bgClass = "bg-gray-900";
+                
+                if (cell.count > 15) bgClass = "bg-cyanAccent";
+                else if (cell.count > 8) bgClass = "bg-cyanAccent/70";
+                else if (cell.count > 3) bgClass = "bg-cyanAccent/30";
+                else if (cell.count > 0) bgClass = "bg-cyanAccent/10";
+                
+                cellEl.className = `${bgClass} h-6 rounded-sm cursor-pointer border border-bgDark hover:border-white transition-all`;
+                cellEl.title = `${cell.day} at ${cell.hour}: ${cell.count} commands`;
+                container.appendChild(cellEl);
+            });
+        }
+
+        // --- Workflows Engine Logic ---
+        async function loadWorkflows() {
+            try {
+                const res = await fetch("/api/workflows");
+                const data = await res.json();
+
+                const grid = document.getElementById('workflows-grid');
+                grid.innerHTML = "";
+
+                // Render saved workflows
+                data.saved_workflows.forEach(w => {
+                    const stepsHtml = w.steps.map(s => `<code class="bg-bgDark px-2 py-1 rounded text-xs text-greenAccent border border-gray-850 font-mono">${s}</code>`).join(' &rarr; ');
+                    
+                    const card = document.createElement('div');
+                    card.style.cssText = "background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:20px;display:flex;flex-direction:column;justify-content:space-between;gap:16px;transition:border-color .3s,transform .3s,box-shadow .3s;";
+                    card.onmouseenter = function(){ this.style.borderColor='rgba(59, 130, 246,0.2)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 30px rgba(59, 130, 246,0.06)'; };
+                    card.onmouseleave = function(){ this.style.borderColor='rgba(255,255,255,0.07)'; this.style.transform='translateY(0)'; this.style.boxShadow='none'; };
+                    card.innerHTML = `
+                        <div class="flex flex-col gap-2">
+                            <div class="flex justify-between items-center">
+                                <span class="font-space font-bold text-white text-lg">${w.name}</span>
+                                <span class="text-[10px] text-purpleAccent px-1.5 py-0.5 rounded bg-purpleAccent/10 border border-purpleAccent/20 font-mono">Triggered: ${w.trigger_count}</span>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2 mt-1">
+                                ${stepsHtml}
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-2 border-t border-gray-850 pt-3">
+                            <button onclick="deleteWorkflow('${w.id}')" class="p-2 bg-pinkAccent/10 text-pinkAccent border border-pinkAccent/20 hover:bg-pinkAccent/25 rounded transition" title="Delete Workflow">
+                                <i data-lucide="trash" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="openAutomationGenerator('${w.name}', ${JSON.stringify(w.steps).replace(/"/g, '&quot;')})" class="p-2 bg-cyanAccent/10 text-cyanAccent border border-cyanAccent/20 hover:bg-cyanAccent/25 rounded transition" title="Generate Alias/Script">
+                                <i data-lucide="cog" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="runWorkflow('${w.id}')" class="px-4 py-2 bg-purpleAccent text-white font-space font-bold rounded hover:bg-opacity-80 transition flex items-center gap-1.5 text-xs">
+                                <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i> Execute Sequence
+                            </button>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+
+                // Render pattern suggestions if any
+                const suggestionsBox = document.getElementById('pattern-alert-box');
+                suggestionsBox.innerHTML = "";
+                
+                if (data.suggested_patterns.length === 0) {
+                    suggestionsBox.innerHTML = `<p class="text-xs text-mutedGray italic">No sequence patterns detected yet. Execute sequences multiple times in the console.</p>`;
+                } else {
+                    data.suggested_patterns.forEach(p => {
+                        const seqStr = p.steps.join(" &rarr; ");
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = "border border-purpleAccent/20 rounded bg-purpleAccent/5 p-3 flex flex-col gap-2";
+                        alertDiv.innerHTML = `
+                            <div class="flex items-center justify-between text-xs text-purpleAccent font-bold font-space">
+                                <span><i data-lucide="activity" class="inline w-3.5 h-3.5 mr-1"></i> REPEATING FLOW DETECTED</span>
+                                <span>Executed ${p.count}x</span>
+                            </div>
+                            <p class="text-xs text-mutedGray font-mono">${seqStr}</p>
+                            <button onclick="saveSuggestedPattern('${p.suggested_name}', ${JSON.stringify(p.steps).replace(/"/g, '&quot;')})" class="px-2 py-1 bg-purpleAccent text-white rounded text-[10px] font-bold self-end hover:bg-opacity-85 transition">
+                                Save as Workflow
+                            </button>
+                        `;
+                        suggestionsBox.appendChild(alertDiv);
+                    });
+                }
+
+                lucide.createIcons();
+
+            } catch (error) {
+                console.error("Error loading workflows:", error);
+            }
+        }
+
+        async function saveWorkflow() {
+            const name = document.getElementById('workflow-name-input').value;
+            const stepsText = document.getElementById('workflow-steps-input').value;
+            
+            if (!name || !stepsText) return;
+            const steps = stepsText.split("\n").map(s => s.trim()).filter(s => s);
+
+            try {
+                await fetch("/api/workflows", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name, steps })
+                });
+                closeCreateWorkflowModal();
+                loadWorkflows();
+            } catch (error) {
+                console.error("Error saving workflow:", error);
+            }
+        }
+
+        async function saveSuggestedPattern(name, steps) {
+            try {
+                await fetch("/api/workflows", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name, steps })
+                });
+                loadWorkflows();
+            } catch (error) {
+                console.error("Error saving workflow suggestion:", error);
+            }
+        }
+
+        async function deleteWorkflow(id) {
+            if (!confirm("Are you sure you want to delete this workflow?")) return;
+            try {
+                await fetch(`/api/workflows/${id}`, { method: "DELETE" });
+                loadWorkflows();
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        async function runWorkflow(id) {
+            try {
+                const res = await fetch(`/api/workflows/trigger/${id}`, { method: "POST" });
+                const data = await res.json();
+                
+                // Write each command to xterm WebSocket
+                switchTab('terminal');
+                for (const step of data.workflow.steps) {
+                    socket.send(JSON.stringify({
+                        "type": "autocomplete_accept",
+                        "command": step
+                    }));
+                    // Wait 1.5 seconds between steps for execution buffer
+                    await new Promise(r => setTimeout(r, 1500));
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        let activeAliasCode = "";
+
+        async function openAutomationGenerator(name, steps) {
+            try {
+                const res = await fetch("/api/automation/generate-alias", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name, steps })
+                });
+                const data = await res.json();
+                
+                document.getElementById('automation-explanation').textContent = data.explanation;
+                document.getElementById('automation-powershell-code').value = data.powershell_code;
+                document.getElementById('automation-bash-code').value = data.bash_code;
+                activeAliasCode = data.powershell_code;
+                
+                document.getElementById('automation-modal').classList.remove('hidden');
+                lucide.createIcons();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function closeAutomationGenerator() {
+            document.getElementById('automation-modal').classList.add('hidden');
+        }
+
+        async function applyAutomationAlias() {
+            if (!activeAliasCode) return;
+            try {
+                const res = await fetch("/api/automation/apply-alias", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ code: activeAliasCode })
+                });
+                const data = await res.json();
+                alert(`${data.message}\n\n${data.instruction}`);
+                closeAutomationGenerator();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // --- Error Recovery Logic ---
+        async function loadErrors() {
+            try {
+                const res = await fetch("/api/errors");
+                const data = await res.json();
+
+                const list = document.getElementById('error-list');
+                list.innerHTML = "";
+
+                if (data.length === 0) {
+                    list.innerHTML = `<p class="p-4 text-xs text-mutedGray italic text-center">No execution errors captured in history database.</p>`;
+                    return;
+                }
+
+                data.forEach(e => {
+                    const item = document.createElement('div');
+                    item.className = "p-4 flex flex-col gap-1.5 hover:bg-gray-900 cursor-pointer transition";
+                    item.onclick = () => {
+                        document.getElementById('err-resolver-stderr').value = e.stderr;
+                        if (e.fix_applied) {
+                            showResolvedFix(e.error_type || "Captured Error", e.fix_applied, "Saved in Memory");
+                        } else {
+                            document.getElementById('error-fix-response-box').classList.add('hidden');
+                        }
+                    };
+                    item.innerHTML = `
+                        <div class="flex justify-between items-center text-xs font-mono">
+                            <span class="text-pinkAccent font-bold">${e.error_type || "Runtime Error"}</span>
+                            <span class="text-gray-500">${e.created_at.slice(11,16)}</span>
+                        </div>
+                        <code class="text-xs text-white truncate font-mono">${e.command || "unknown command"}</code>
+                        <p class="text-[10px] text-mutedGray truncate font-mono">${e.stderr}</p>
+                    `;
+                    list.appendChild(item);
+                });
+
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        async function resolveErrorFromForm() {
+            const stderr = document.getElementById('err-resolver-stderr').value;
+            if (!stderr) return;
+
+            try {
+                const res = await fetch("/api/errors/resolve", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ stderr })
+                });
+                const fix = await res.json();
+                showResolvedFix(fix.error_type, fix.fix_applied, `${fix.confidence}% confidence (${fix.source})`);
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        function showResolvedFix(type, fixText, confText) {
+            const box = document.getElementById('error-fix-response-box');
+            box.classList.remove('hidden');
+            document.getElementById('resolved-err-type').textContent = `AI CLASSIFICATION: ${type}`;
+            document.getElementById('resolved-confidence').textContent = confText;
+            document.getElementById('resolved-fix-text').innerHTML = fixText;
+        }
+
+        async function saveFeedback(isPositive) {
+            const stderr = document.getElementById('err-resolver-stderr').value;
+            const fix = document.getElementById('resolved-fix-text').textContent;
+            
+            let fixApplied = fix;
+            if (!isPositive) {
+                const alt = prompt("Enter the correct solution/command to run:");
+                if (!alt) return;
+                fixApplied = alt;
+            }
+
+            try {
+                await fetch("/api/errors/fix", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ stderr, fix_applied: fixApplied })
+                });
+                alert("Solution feedback saved to Cognitive Vector DB!");
+                loadErrors();
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        // --- Session Replay Player Logic ---
+        let replayTerm = null;
+        let activeRecording = [];
+        let replayIndex = 0;
+        let replayInterval = null;
+        let replaySpeed = 1;
+
+        async function loadSessions() {
+            try {
+                const res = await fetch("/api/sessions");
+                const data = await res.json();
+
+                const list = document.getElementById('sessions-list');
+                list.innerHTML = "";
+
+                if (data.length === 0) {
+                    list.innerHTML = `<p class="p-4 text-xs text-mutedGray italic text-center">No terminal sessions recorded yet.</p>`;
+                    return;
+                }
+
+                data.forEach(s => {
+                    const item = document.createElement('div');
+                    item.className = "p-4 flex flex-col gap-1 hover:bg-gray-900 cursor-pointer transition";
+                    item.onclick = () => loadSessionReplay(s.id, s.started_at);
+                    item.innerHTML = `
+                        <div class="flex justify-between items-center text-xs font-mono">
+                            <span class="text-cyanAccent font-bold">Session ID: ${s.id.slice(0,8)}...</span>
+                            <span class="text-gray-500">${s.started_at.slice(0,10)}</span>
+                        </div>
+                        <div class="flex justify-between text-[11px] text-mutedGray font-mono">
+                            <span>Cmds executed: ${s.command_count}</span>
+                            <span>Time: ${s.started_at.slice(11,16)}</span>
+                        </div>
+                    `;
+                    list.appendChild(item);
+                });
+
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        async function loadSessionReplay(sessionId, timestamp) {
+            try {
+                const res = await fetch(`/api/sessions/${sessionId}/replay`);
+                const data = await res.json();
+
+                activeRecording = data.recording || [];
+                replayIndex = 0;
+                
+                document.getElementById('replay-title').textContent = `Replaying: Session ${sessionId.slice(0,8)} (Started ${timestamp.slice(11,19)})`;
+                document.getElementById('replay-timer').textContent = `0 / ${activeRecording.length} Cmds`;
+                
+                const scrubber = document.getElementById('replay-scrubber');
+                scrubber.max = activeRecording.length;
+                scrubber.value = 0;
+
+                // Stop any running replay
+                if (replayInterval) clearInterval(replayInterval);
+                document.getElementById('replay-play-btn').innerHTML = `<i data-lucide="play" class="w-5 h-5 fill-current"></i>`;
+                lucide.createIcons();
+
+                // Initialize Replay Terminal if needed
+                if (!replayTerm) {
+                    replayTerm = new Terminal({
+                        cursorBlink: false,
+                        theme: {
+                            background: '#0A0E1A',
+                            foreground: '#E5E7EB',
+                            black: '#000000',
+                            red: '#ef4444',
+                            green: '#10b981',
+                            white: '#E5E7EB'
+                        },
+                        fontFamily: 'JetBrains Mono, monospace',
+                        fontSize: 13,
+                        lineHeight: 1.2
+                    });
+                    const container = document.getElementById('replay-terminal-container');
+                    replayTerm.open(container);
+                    const replayFit = new FitAddon.FitAddon();
+                    replayTerm.loadAddon(replayFit);
+                    replayFit.fit();
+                }
+
+                replayTerm.clear();
+                replayTerm.write("\r\n\x1b[36mFlowCore session playback ready. Press Play to start.\x1b[0m\r\n\r\n");
+
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        function toggleReplayPlay() {
+            const btn = document.getElementById('replay-play-btn');
+            if (replayInterval) {
+                // Pause
+                clearInterval(replayInterval);
+                replayInterval = null;
+                btn.innerHTML = `<i data-lucide="play" class="w-5 h-5 fill-current"></i>`;
+            } else {
+                // Play
+                if (replayIndex >= activeRecording.length) {
+                    replayIndex = 0;
+                    replayTerm.clear();
+                }
+                btn.innerHTML = `<i data-lucide="pause" class="w-5 h-5 fill-current"></i>`;
+                const delay = 1500 / replaySpeed;
+                replayInterval = setInterval(playNextStep, delay);
+            }
+            lucide.createIcons();
+        }
+
+        function playNextStep() {
+            if (replayIndex >= activeRecording.length) {
+                toggleReplayPlay();
+                return;
+            }
+
+            const step = activeRecording[replayIndex];
+            replayTerm.write(`\r\nPS C:\\FlowCore> \x1b[32m${step.command}\x1b[0m\r\n`);
+            if (step.exit_code !== 0) {
+                replayTerm.write(`\x1b[31mCommand failed (Exit code: ${step.exit_code}). Duration: ${step.duration_ms}ms\x1b[0m\r\n`);
+            } else {
+                replayTerm.write(`\x1b[90mCommand succeeded. Duration: ${step.duration_ms}ms\x1b[0m\r\n`);
+            }
+
+            replayIndex++;
+            document.getElementById('replay-timer').textContent = `${replayIndex} / ${activeRecording.length} Cmds`;
+            document.getElementById('replay-scrubber').value = replayIndex;
+        }
+
+        function scrubReplay(value) {
+            replayIndex = parseInt(value);
+            replayTerm.clear();
+            replayTerm.write(`\r\n\x1b[36mJumped to step ${replayIndex}\x1b[0m\r\n`);
+            
+            for (let i = 0; i < replayIndex; i++) {
+                const step = activeRecording[i];
+                replayTerm.write(`\r\nPS C:\\FlowCore> \x1b[32m${step.command}\x1b[0m\r\n`);
+            }
+            document.getElementById('replay-timer').textContent = `${replayIndex} / ${activeRecording.length} Cmds`;
+        }
+
+        function setReplaySpeed(speed) {
+            replaySpeed = speed;
+            document.querySelectorAll('.speed-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-gray-800');
+                btn.classList.add('bg-gray-900', 'text-mutedGray');
+            });
+            event.target.classList.add('active', 'bg-gray-800');
+            event.target.classList.remove('bg-gray-900', 'text-mutedGray');
+
+            if (replayInterval) {
+                // Restart timer with new speed
+                clearInterval(replayInterval);
+                const delay = 1500 / replaySpeed;
+                replayInterval = setInterval(playNextStep, delay);
+            }
+        }
+
+        // --- Interactive Neural Network Canvas Background ---
+        const canvas = document.getElementById('neural-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        });
+
+        const particles = [];
+        const maxParticles = 60;
+        const connectionDist = 120;
+        
+        let mouseX = 0;
+        let mouseY = 0;
+        
+        window.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.4;
+                this.vy = (Math.random() - 0.5) * 0.4;
+                this.radius = Math.random() * 1.5 + 1;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(94, 109, 137, 0.3)';
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < maxParticles; i++) {
+            particles.push(new Particle());
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            
+            // Draw connections
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+                
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < connectionDist) {
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        const alpha = (1 - dist / connectionDist) * 0.15;
+                        ctx.strokeStyle = `rgba(94, 109, 137, ${alpha})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                }
+                
+                // Connect to mouse pointer
+                const mdx = particles[i].x - mouseX;
+                const mdy = particles[i].y - mouseY;
+                const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+                if (mdist < 180) {
+                    ctx.beginPath();
+                    ctx.moveTo(particles[i].x, particles[i].y);
+                    ctx.lineTo(mouseX, mouseY);
+                    const malpha = (1 - mdist / 180) * 0.25;
+                    ctx.strokeStyle = `rgba(99, 102, 241, ${malpha})`;
+                    ctx.lineWidth = 0.5;
+                    ctx.stroke();
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // --- Live Mock Telemetry ---
+        setInterval(() => {
+            const cpu = Math.floor(Math.random() * 30) + 15; // 15-45%
+            const mem = Math.floor(Math.random() * 5) + 60; // 60-65%
+            
+            const cpuBar = document.getElementById('cpu-bar');
+            const memBar = document.getElementById('mem-bar');
+            if (cpuBar) cpuBar.style.width = `${cpu}%`;
+            if (memBar) memBar.style.width = `${mem}%`;
+        }, 1500);
+
+        // --- Spline 3D Viewer Load Transition & Fail-safe ---
+        // --- Page Initializations ---
+        window.addEventListener('DOMContentLoaded', () => {
+            // Static, clean initialization complete
+        });
+
+    </script>
+</body>
+</html>
