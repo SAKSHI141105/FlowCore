@@ -257,33 +257,7 @@ def mine_workflows_sliding_window() -> List[Dict[str, Any]]:
     return sorted(suggestions, key=lambda x: x['count'], reverse=True)
 
 def find_error_fix(stderr_text: str) -> Dict[str, Any]:
-    """Finds best matching error fix in SQLite using Cosine Similarity."""
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, stderr, error_type, fix_applied FROM errors WHERE fix_applied IS NOT NULL")
-    errors_db = cursor.fetchall()
-    conn.close()
-    
-    best_similarity = 0.0
-    best_match = None
-    
-    for err in errors_db:
-        # Match against stored stderr
-        sim = compute_cosine_similarity(stderr_text, err['stderr'])
-        if sim > best_similarity:
-            best_similarity = sim
-            best_match = err
-            
-    # Default threshold
-    if best_similarity > 0.35 and best_match:
-        return {
-            "error_type": best_match["error_type"],
-            "fix_applied": best_match["fix_applied"],
-            "confidence": round(best_similarity * 100, 1),
-            "source": "Memory"
-        }
-        
-    # AI Fallback generator (Rule-based for common developer errors if LLM not connected)
+    """Finds best matching error fix using Cognitive Rules first, then SQLite Memory fallback."""
     fix_suggestion = "Ensure dependencies are installed and the executable is in your PATH environment variable."
     err_type = "Unspecified Error"
     
@@ -306,15 +280,47 @@ def find_error_fix(stderr_text: str) -> Dict[str, Any]:
         fix_suggestion = "Initialize git: run 'git init'"
     elif "npm" in lower_stderr and "not recognized" in lower_stderr:
         err_type = "Command / Typo Error"
-        if "instal\r" in lower_stderr or "instal\n" in lower_stderr or " instal" in lower_stderr:
+        if "instal\r" in lower_stderr or "instal\n" in lower_stderr or " instal" in lower_stderr or "+ npm instal" in lower_stderr:
             fix_suggestion = "Typo detected! You wrote 'instal', but the correct spelling is 'npm install'. (Note: You also need to install Node.js first if npm is not found on this system)."
         else:
             fix_suggestion = "Install Node.js (which includes npm) and ensure it is added to your Environment PATH."
+
+    if err_type != "Unspecified Error":
+        return {
+            "error_type": err_type,
+            "fix_applied": fix_suggestion,
+            "confidence": 95.0,
+            "source": "Cognitive AI Layer"
+        }
+
+    # If no specific rule matched, fallback to Memory
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, stderr, error_type, fix_applied FROM errors WHERE fix_applied IS NOT NULL")
+    errors_db = cursor.fetchall()
+    conn.close()
+    
+    best_similarity = 0.0
+    best_match = None
+    
+    for err in errors_db:
+        sim = compute_cosine_similarity(stderr_text, err['stderr'])
+        if sim > best_similarity:
+            best_similarity = sim
+            best_match = err
+            
+    if best_similarity > 0.35 and best_match:
+        return {
+            "error_type": best_match["error_type"],
+            "fix_applied": best_match["fix_applied"],
+            "confidence": round(best_similarity * 100, 1),
+            "source": "Memory"
+        }
         
     return {
-        "error_type": err_type,
+        "error_type": "Unspecified Error",
         "fix_applied": fix_suggestion,
-        "confidence": 85.0,
+        "confidence": 50.0,
         "source": "Cognitive AI Layer"
     }
 
