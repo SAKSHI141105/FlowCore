@@ -1,10 +1,10 @@
 # FlowCore: AI-Powered Terminal Intelligence & Workflow Optimization
 
-FlowCore is an intelligent developer operating layer that operates directly inside native operating system terminals (Windows PowerShell, macOS Terminal, iTerm2, Linux Bash, and Zsh) rather than running as a standalone utility. It transforms traditional command-line environments into adaptive, workflow-aware engineering systems capable of learning behavior, auto-mining repetitive sequences, predicting next commands, and resolving runtime errors in real time.
+FlowCore is an intelligent developer operating layer that operates directly inside native operating system terminals (Windows PowerShell, macOS Terminal, iTerm2, Linux Bash, and Zsh) rather than running as a standalone utility. It transforms traditional command-line environments into adaptive, workflow-aware engineering systems capable of learning developer behavior, auto-mining repetitive sequences, predicting next commands, and resolving runtime errors in real time.
 
 ---
 
-## ⚡ Key Features
+## Key Features
 
 1. **Intelligent Command Predictions**: Uses local Markov Chain transition probability analysis to suggest the most likely next command as Fish-style ghost text or clean ASCII boxes directly inside your shell.
 2. **Contextual Error Recovery**: Instantly intercepts non-zero exit codes and matches the `stderr` string against a local error vector database to present resolution steps (e.g., missing dependencies, wrong ports, path configurations) in clean terminal layouts.
@@ -15,7 +15,7 @@ FlowCore is an intelligent developer operating layer that operates directly insi
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 FlowCore is split into specialized decoupled layers:
 * **Shell Integration Layer (`ns.ps1` & `ns.sh`)**: Fast prompt hooks that capture command execution durations, active directories, exit codes, and errors, shipping them to the background server.
@@ -26,7 +26,7 @@ FlowCore is split into specialized decoupled layers:
 
 ---
 
-## 🚀 Installation & Setup
+## Installation & Setup
 
 ### 1. Start the Background Server
 Ensure Python is installed, then launch the FastAPI server:
@@ -55,7 +55,7 @@ Navigate to **`http://127.0.0.1:8000`** in your browser to inspect command veloc
 
 ---
 
-## 🛠️ Verification & Test Suite
+## Verification & Test Suite
 
 You can verify the entire local prediction engine, similarity scoring, error resolvers, and sliding window miners by running the Python test suite:
 ```bash
@@ -64,6 +64,6 @@ python -m unittest test_engine.py
 
 ---
 
-## 🔒 Local-First & Privacy Configs
+## Local-First & Privacy Configs
 
 FlowCore works locally first. Your command telemetry is saved inside the local SQLite database `flowcore.db`. You can configure prediction thresholds, models, and toggle local offline fallbacks inside the **User Settings** tab of the dashboard.
