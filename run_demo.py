@@ -257,56 +257,456 @@ def mine_workflows_sliding_window() -> List[Dict[str, Any]]:
     return sorted(suggestions, key=lambda x: x['count'], reverse=True)
 
 def find_error_fix(stderr_text: str) -> Dict[str, Any]:
-    """Finds best matching error fix using Cognitive Rules first, then SQLite Memory fallback."""
+    """
+    Cognitive Error Resolution Engine v2.0
+    45+ rules covering Python, Node/npm, Git, Docker, Permissions,
+    Network, Syntax, Runtime errors and Typos.
+    Falls back to SQLite cosine-similarity memory if no rule matches.
+    """
+    import re as _re
+
     fix_suggestion = "Ensure dependencies are installed and the executable is in your PATH environment variable."
     err_type = "Unspecified Error"
-    
-    lower_stderr = stderr_text.lower()
-    if "pip" in lower_stderr and "not recognized" in lower_stderr:
+
+    s = stderr_text.strip()
+    low = s.lower()
+
+    # ── Helper: extract package name from "No module named '<pkg>'" ────────────
+    def _pkg_from_named(text):
+        part = text.split("named")[-1]
+        line = part.split("\n")[0].split("\r")[0]
+        pkg = line.replace("'", "").replace('"', "").strip()
+        pkg = _re.sub(r'[\s>\\].*$', '', pkg)   # strip trailing PS prompt junk
+        return pkg or "<package>"
+
+    # ══ 1. pip / pip3 not in PATH ═════════════════════════════════════════════
+    if ("pip" in low or "pip3" in low) and "not recognized" in low:
         err_type = "Python Path Error"
-        fix_suggestion = "Run: python -m pip install <package> or re-install Python selecting 'Add to PATH'."
-    elif "modulenotfounderror" in lower_stderr or "no module named" in lower_stderr:
+        fix_suggestion = (
+            "pip is not in PATH. Run:  python -m pip install <package>  "
+            "or re-install Python and tick 'Add Python to PATH'."
+        )
+
+    # ══ 2. Python missing module (ModuleNotFoundError / ImportError) ══════════
+    elif "modulenotfounderror" in low or "no module named" in low or \
+         ("importerror" in low and "no module named" in low):
         err_type = "Python Dependency Missing"
-        if "named" in stderr_text:
-            pkg_part = stderr_text.split("named")[-1]
-            pkg_line = pkg_part.split("\n")[0].split("\r")[0]
-            pkg = pkg_line.replace("'", "").replace('"', "").strip()
-        else:
-            pkg = "<package>"
+        pkg = _pkg_from_named(s) if "named" in s else "<package>"
         fix_suggestion = f"Run: pip install {pkg}"
-    elif "python -c" in lower_stderr and "import" in lower_stderr:
-        import re
-        match = re.search(r"import\s+([a-zA-Z0-9_\-]+)", lower_stderr)
-        if not match:
-            match = re.search(r"from\s+([a-zA-Z0-9_\-]+)\s+import", lower_stderr)
-        if match:
-            pkg = match.group(1)
+
+    # ══ 3. python -c "import <pkg>" failed ════════════════════════════════════
+    elif "python -c" in low and "import" in low:
+        m = _re.search(r'import\s+([a-zA-Z0-9_\-]+)', low)
+        if not m:
+            m = _re.search(r'from\s+([a-zA-Z0-9_\-]+)\s+import', low)
+        if m:
             err_type = "Python Dependency Missing"
-            fix_suggestion = f"Run: pip install {pkg}"
-    elif "python -m" in lower_stderr and "command failed" in lower_stderr:
-        import re
-        match = re.search(r"python\s+-m\s+([a-zA-Z0-9_\-]+)", lower_stderr)
-        if match:
-            pkg = match.group(1)
+            fix_suggestion = f"Run: pip install {m.group(1)}"
+
+    # ══ 4. python -m <module> failed ══════════════════════════════════════════
+    elif "python -m" in low:
+        m = _re.search(r'python\s+-m\s+([a-zA-Z0-9_\-]+)', low)
+        if m:
             err_type = "Python Dependency Missing"
-            fix_suggestion = f"Run: pip install {pkg}"
-    elif "node" in lower_stderr and "not recognized" in lower_stderr:
-        err_type = "NodeJS Missing"
-        fix_suggestion = "Download and install Node.js from https://nodejs.org/."
-    elif "unauthorizedaccess" in lower_stderr or "permission denied" in lower_stderr:
-        err_type = "Permission Denied"
-        fix_suggestion = "Run your console as Administrator (right click -> Run as Administrator)."
-    elif "not a git repository" in lower_stderr:
-        err_type = "Git Repository Missing"
-        fix_suggestion = "Initialize git: run 'git init'"
-    elif "npm" in lower_stderr and "not recognized" in lower_stderr:
-        if "instal\r" in lower_stderr or "instal\n" in lower_stderr or " instal" in lower_stderr or "+ npm instal" in lower_stderr:
+            fix_suggestion = f"Run: pip install {m.group(1)}"
+
+    # ══ 5. python.exe not in PATH ════════════════════════════════════════════
+    elif "python" in low and "not recognized" in low and "cmdlet" in low:
+        err_type = "Python Not Installed"
+        fix_suggestion = (
+            "Python is not installed or not in PATH. "
+            "Download from https://python.org/ and tick 'Add Python to PATH'."
+        )
+
+    # ══ 6. SyntaxError ════════════════════════════════════════════════════════
+    elif "syntaxerror" in low:
+        err_type = "Python Syntax Error"
+        loc = _re.search(r'file ["\'](.+?)["\'], line (\d+)', low)
+        if loc:
+            fix_suggestion = (
+                f"Syntax error in '{loc.group(1)}' at line {loc.group(2)}. "
+                "Check for missing colons ':', unmatched brackets, or bad indentation."
+            )
+        else:
+            fix_suggestion = (
+                "Syntax error detected. Check for missing colons ':', "
+                "unmatched brackets '()[]{}', or incorrect indentation."
+            )
+
+    # ══ 7. IndentationError ═══════════════════════════════════════════════════
+    elif "indentationerror" in low:
+        err_type = "Python Indentation Error"
+        fix_suggestion = (
+            "Indentation error. Use consistent 4-space indentation "
+            "and never mix spaces with tabs."
+        )
+
+    # ══ 8. NameError ══════════════════════════════════════════════════════════
+    elif "nameerror" in low and "is not defined" in low:
+        err_type = "Python NameError"
+        m = _re.search(r"name '(.+?)' is not defined", low)
+        var = m.group(1) if m else "<variable>"
+        fix_suggestion = (
+            f"Variable '{var}' is not defined. "
+            "Check for typos in the name or declare it before use."
+        )
+
+    # ══ 9. TypeError ══════════════════════════════════════════════════════════
+    elif "typeerror" in low:
+        err_type = "Python TypeError"
+        if "unsupported operand" in low:
+            fix_suggestion = (
+                "Type mismatch in operation. "
+                "Use int(), str() or float() to convert before operating."
+            )
+        elif "takes" in low and "argument" in low:
+            fix_suggestion = (
+                "Wrong number of arguments passed to a function. "
+                "Check the function signature."
+            )
+        else:
+            fix_suggestion = (
+                "TypeError: unexpected value type. "
+                "Check variable types with type() and convert if needed."
+            )
+
+    # ══ 10. AttributeError ════════════════════════════════════════════════════
+    elif "attributeerror" in low:
+        err_type = "Python AttributeError"
+        m = _re.search(r"'(.+?)' object has no attribute '(.+?)'", low)
+        if m:
+            fix_suggestion = (
+                f"'{m.group(1)}' has no attribute '{m.group(2)}'. "
+                "Check spelling and verify the object type."
+            )
+        else:
+            fix_suggestion = (
+                "Object does not have this attribute. "
+                "Check the attribute name and object type."
+            )
+
+    # ══ 11. KeyError ══════════════════════════════════════════════════════════
+    elif "keyerror" in low:
+        err_type = "Python KeyError"
+        m = _re.search(r'keyerror:\s*(.+)', low)
+        key = m.group(1).strip(" '\"") if m else "<key>"
+        fix_suggestion = (
+            f"Key '{key}' not found in dictionary. "
+            "Use dict.get('key', default) to safely access keys."
+        )
+
+    # ══ 12. IndexError ════════════════════════════════════════════════════════
+    elif "indexerror" in low:
+        err_type = "Python IndexError"
+        fix_suggestion = (
+            "List index out of range. "
+            "Check the list length with len() before indexing."
+        )
+
+    # ══ 13. ValueError ════════════════════════════════════════════════════════
+    elif "valueerror" in low:
+        err_type = "Python ValueError"
+        if "invalid literal" in low:
+            fix_suggestion = (
+                "Cannot convert this value to a number. "
+                "Make sure the string contains only digits before calling int() or float()."
+            )
+        else:
+            fix_suggestion = (
+                "ValueError: invalid value for this operation. "
+                "Check the value you are passing."
+            )
+
+    # ══ 14. ZeroDivisionError ═════════════════════════════════════════════════
+    elif "zerodivisionerror" in low:
+        err_type = "Python ZeroDivisionError"
+        fix_suggestion = (
+            "Division by zero. "
+            "Add a guard:  if denominator != 0:  before dividing."
+        )
+
+    # ══ 15. FileNotFoundError ═════════════════════════════════════════════════
+    elif "filenotfounderror" in low or ("no such file or directory" in low and "python" in low):
+        err_type = "File Not Found"
+        m = _re.search(r"'([^']+\.[a-z0-9]+)'", s)
+        f = m.group(1) if m else "<file>"
+        fix_suggestion = (
+            f"File '{f}' does not exist. "
+            "Check the path/filename and make sure you are in the correct directory."
+        )
+
+    # ══ 16. RecursionError ════════════════════════════════════════════════════
+    elif "recursionerror" in low or "maximum recursion depth" in low:
+        err_type = "Python RecursionError"
+        fix_suggestion = (
+            "Max recursion depth exceeded. "
+            "Check your recursive function for a missing or unreachable base case."
+        )
+
+    # ══ 17. MemoryError ═══════════════════════════════════════════════════════
+    elif "memoryerror" in low:
+        err_type = "Python MemoryError"
+        fix_suggestion = (
+            "Out of memory. Process data in smaller chunks or use generators."
+        )
+
+    # ══ 18. PowerShell execution policy (venv activate) ══════════════════════
+    elif "cannot be loaded because running scripts is disabled" in low or \
+         "running scripts is disabled" in low or "executionpolicy" in low:
+        err_type = "PowerShell Execution Policy"
+        fix_suggestion = (
+            "Scripts are blocked by PowerShell Execution Policy. "
+            "Fix:  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser"
+        )
+
+    # ══ 19. npm – typo 'instal' (word-boundary, not 'install') ═══════════════
+    elif "npm" in low and "not recognized" in low:
+        _typo = _re.compile(r'\binstal\b(?!l)', _re.IGNORECASE)
+        if _typo.search(low):
             err_type = "Command / Typo Error"
-            fix_suggestion = "Typo detected! You wrote 'instal', but the correct spelling is 'npm install'. (Note: You also need to install Node.js first if npm is not found on this system)."
+            fix_suggestion = (
+                "Typo detected! You wrote 'npm instal' — "
+                "the correct command is 'npm install'."
+            )
         else:
             err_type = "NPM Missing"
-            fix_suggestion = "Install Node.js (which includes npm) and ensure it is added to your Environment PATH. (https://nodejs.org/)"
+            fix_suggestion = (
+                "npm is not installed. "
+                "Download Node.js (includes npm) from https://nodejs.org/ "
+                "and restart your terminal."
+            )
 
+    # ══ 20. Node.js not in PATH ═══════════════════════════════════════════════
+    elif "node" in low and "not recognized" in low:
+        err_type = "NodeJS Missing"
+        fix_suggestion = (
+            "Node.js is not installed or not in PATH. "
+            "Download from https://nodejs.org/ and restart your terminal."
+        )
+
+    # ══ 21. Port already in use (EADDRINUSE) ══════════════════════════════════
+    elif "eaddrinuse" in low or "address already in use" in low:
+        err_type = "Port Already In Use"
+        pm = _re.search(r':::?(\d+)', low) or _re.search(r':(\d+)', low)
+        port = pm.group(1) if pm else "<port>"
+        fix_suggestion = (
+            f"Port {port} is already in use. "
+            f"Find it:  netstat -ano | findstr :{port}  "
+            f"then kill:  taskkill /PID <PID> /F"
+        )
+
+    # ══ 22. DNS / ENOTFOUND ═══════════════════════════════════════════════════
+    elif "enotfound" in low or "getaddrinfo" in low:
+        err_type = "DNS / Network Error"
+        fix_suggestion = (
+            "DNS lookup failed. "
+            "Check your internet connection and verify the hostname."
+        )
+
+    # ══ 23. EACCES – npm global permission ════════════════════════════════════
+    elif "eacces" in low and "permission denied" in low:
+        err_type = "Permission Denied"
+        fix_suggestion = (
+            "Permission denied. Run your terminal as Administrator, "
+            "or see: https://docs.npmjs.com/resolving-eacces-permissions-errors"
+        )
+
+    # ══ 24. Node Sass / native binding ════════════════════════════════════════
+    elif "node sass" in low or "node-sass" in low or "missing binding" in low:
+        err_type = "Node Native Binding Missing"
+        fix_suggestion = (
+            "Node Sass binding missing or incompatible with your Node version. "
+            "Run:  npm rebuild node-sass  or switch to dart-sass:  npm install sass"
+        )
+
+    # ══ 25. npm dependency conflict (ERESOLVE) ════════════════════════════════
+    elif "eresolve" in low or "unable to resolve dependency tree" in low:
+        err_type = "NPM Dependency Conflict"
+        fix_suggestion = (
+            "npm cannot resolve conflicting peer dependencies. "
+            "Try:  npm install --legacy-peer-deps"
+        )
+
+    # ══ 26. npm 404 – package not found ═══════════════════════════════════════
+    elif "npm err" in low and "404" in low:
+        err_type = "NPM Package Not Found"
+        fix_suggestion = (
+            "npm package not found (404). "
+            "Check the package name at https://www.npmjs.com/"
+        )
+
+    # ══ 27. Git – not a repository ════════════════════════════════════════════
+    elif "not a git repository" in low:
+        err_type = "Git Repository Missing"
+        fix_suggestion = "Not a git repo. Run:  git init  to initialise one."
+
+    # ══ 28. Git – no upstream branch ══════════════════════════════════════════
+    elif "has no upstream branch" in low or "set-upstream" in low:
+        err_type = "Git No Upstream"
+        fix_suggestion = (
+            "Branch has no upstream. "
+            "Run:  git push --set-upstream origin <branch-name>"
+        )
+
+    # ══ 29. Git – merge conflict / stash ══════════════════════════════════════
+    elif "would be overwritten by merge" in low or \
+         "please commit your changes or stash" in low:
+        err_type = "Git Merge Conflict"
+        fix_suggestion = (
+            "Local changes conflict with incoming merge. "
+            "Run:  git stash  then  git pull  then  git stash pop"
+        )
+
+    # ══ 30. Git – authentication failed (GitHub) ══════════════════════════════
+    elif "authentication failed" in low and "github" in low:
+        err_type = "Git Auth Failed"
+        fix_suggestion = (
+            "GitHub authentication failed. Use a Personal Access Token (PAT): "
+            "https://docs.github.com/en/authentication"
+        )
+
+    elif "authentication failed" in low:
+        err_type = "Git Auth Failed"
+        fix_suggestion = (
+            "Authentication failed. Check your credentials or SSH key. "
+            "Try:  git config --global credential.helper manager"
+        )
+
+    # ══ 31. Git – detached HEAD ════════════════════════════════════════════════
+    elif "detached head" in low or "head detached" in low:
+        err_type = "Git Detached HEAD"
+        fix_suggestion = (
+            "You are in detached HEAD state. "
+            "Create a branch:  git switch -c <branch>  "
+            "or return to main:  git switch main"
+        )
+
+    # ══ 32. Git – not installed ════════════════════════════════════════════════
+    elif "git" in low and "not recognized" in low:
+        err_type = "Git Not Installed"
+        fix_suggestion = (
+            "Git is not installed. "
+            "Download from https://git-scm.com/ and restart your terminal."
+        )
+
+    # ══ 33. Permissions – Windows / POSIX ════════════════════════════════════
+    elif "unauthorizedaccess" in low or "permission denied" in low or \
+         "access to the path" in low:
+        err_type = "Permission Denied"
+        fix_suggestion = (
+            "Access denied. Right-click your terminal → 'Run as Administrator', "
+            "or check file/folder permissions."
+        )
+
+    # ══ 34. Docker – daemon not running ══════════════════════════════════════
+    elif ("docker" in low and "daemon" in low) or "docker.sock" in low or \
+         "is the docker daemon running" in low:
+        err_type = "Docker Daemon Not Running"
+        fix_suggestion = (
+            "Docker daemon is not running. "
+            "Open Docker Desktop, wait for it to start, then retry."
+        )
+
+    # ══ 35. Docker – not installed ════════════════════════════════════════════
+    elif "docker" in low and "not recognized" in low:
+        err_type = "Docker Not Installed"
+        fix_suggestion = (
+            "Docker is not installed. "
+            "Download Docker Desktop from https://www.docker.com/products/docker-desktop/"
+        )
+
+    # ══ 36. SSL certificate error ═════════════════════════════════════════════
+    elif "certificate_verify_failed" in low or \
+         ("ssl" in low and "certificate" in low):
+        err_type = "SSL Certificate Error"
+        fix_suggestion = (
+            "SSL certificate verification failed. "
+            "Try:  pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org <package>"
+        )
+
+    # ══ 37. Connection timeout ════════════════════════════════════════════════
+    elif "etimedout" in low or "connection timed out" in low or \
+         "connection timeout" in low:
+        err_type = "Network Timeout"
+        fix_suggestion = (
+            "Network connection timed out. "
+            "Check your internet connection or try a VPN if behind a firewall."
+        )
+
+    # ══ 38. Connection refused ════════════════════════════════════════════════
+    elif "econnrefused" in low or "connection refused" in low:
+        err_type = "Connection Refused"
+        pm = _re.search(r':(\d+)', low)
+        port = pm.group(1) if pm else "<port>"
+        fix_suggestion = (
+            f"Connection refused on port {port}. "
+            f"Make sure the server is running and listening on port {port}."
+        )
+
+    # ══ 39. pip – package not on PyPI ═════════════════════════════════════════
+    elif "could not find a version that satisfies" in low or \
+         "no matching distribution found" in low:
+        m = _re.search(r'requirement\s+(\S+)', low)
+        pkg = m.group(1) if m else "<package>"
+        err_type = "Package Not Found on PyPI"
+        fix_suggestion = (
+            f"'{pkg}' not found on PyPI. "
+            "Check the spelling or search at https://pypi.org/"
+        )
+
+    # ══ 40. Java – class not found ════════════════════════════════════════════
+    elif "classnotfoundexception" in low or "noclassdeffounderror" in low:
+        err_type = "Java Class Not Found"
+        fix_suggestion = (
+            "Java class not found. Check CLASSPATH or rebuild with:  "
+            "mvn clean install  /  gradle build"
+        )
+
+    # ══ 41. Java – out of memory ══════════════════════════════════════════════
+    elif "outofmemoryerror" in low or "java heap space" in low:
+        err_type = "Java Out Of Memory"
+        fix_suggestion = (
+            "Java ran out of heap. "
+            "Increase with:  java -Xmx2g -jar yourapp.jar"
+        )
+
+    # ══ 42. C/C++ – linker error ══════════════════════════════════════════════
+    elif "undefined reference" in low or "linker command failed" in low:
+        err_type = "Linker Error"
+        fix_suggestion = (
+            "Linker error: missing symbol or library. "
+            "Add required libraries with  -l<lib>  flags in your build command."
+        )
+
+    # ══ 43. Database – connection error ═══════════════════════════════════════
+    elif any(db in low for db in ["postgres", "mysql", "mongodb", "redis"]) and \
+         ("could not connect" in low or "connection refused" in low):
+        err_type = "Database Connection Error"
+        fix_suggestion = (
+            "Cannot connect to database. "
+            "Ensure the DB server is running, check port/credentials."
+        )
+
+    # ══ 44. Generic – command not recognized (catch-all) ══════════════════════
+    elif "is not recognized as the name of a cmdlet" in low or \
+         "command not found" in low:
+        m = _re.search(r"'([^']+)'\s+is not recognized", low)
+        cmd_name = m.group(1) if m else "<command>"
+        err_type = "Command Not Found"
+        fix_suggestion = (
+            f"'{cmd_name}' is not installed or not in PATH. "
+            "Install the required tool and restart your terminal."
+        )
+
+    # ══ 45. FileNotFoundError (general / non-Python) ═════════════════════════
+    elif "no such file or directory" in low:
+        err_type = "File Not Found"
+        fix_suggestion = (
+            "File or directory not found. "
+            "Check the path and make sure you are in the correct working directory."
+        )
+
+    # ── Early return if any rule matched ──────────────────────────────────────
     if err_type != "Unspecified Error":
         return {
             "error_type": err_type,
@@ -315,22 +715,22 @@ def find_error_fix(stderr_text: str) -> Dict[str, Any]:
             "source": "Cognitive AI Layer"
         }
 
-    # If no specific rule matched, fallback to Memory
+    # ── Memory fallback: cosine-similarity search over saved errors ───────────
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT id, stderr, error_type, fix_applied FROM errors WHERE fix_applied IS NOT NULL")
     errors_db = cursor.fetchall()
     conn.close()
-    
+
     best_similarity = 0.0
     best_match = None
-    
+
     for err in errors_db:
         sim = compute_cosine_similarity(stderr_text, err['stderr'])
         if sim > best_similarity:
             best_similarity = sim
             best_match = err
-            
+
     if best_similarity > 0.35 and best_match:
         return {
             "error_type": best_match["error_type"],
@@ -338,7 +738,7 @@ def find_error_fix(stderr_text: str) -> Dict[str, Any]:
             "confidence": round(best_similarity * 100, 1),
             "source": "Memory"
         }
-        
+
     return {
         "error_type": "Unspecified Error",
         "fix_applied": fix_suggestion,
