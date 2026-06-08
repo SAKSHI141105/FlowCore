@@ -151,6 +151,27 @@ function Show-FlowCoreBox {
     Write-Host ("+" + ("-" * $interiorWidth) + "+") -ForegroundColor $Color
 }
 
+# Auto-start FlowCore Daemon if not running
+$port = 8000
+$isPortOpen = $false
+try {
+    $client = New-Object System.Net.Sockets.TcpClient("127.0.0.1", $port)
+    if ($client.Connected) {
+        $isPortOpen = $true
+        $client.Close()
+    }
+} catch {
+    $isPortOpen = $false
+}
+
+if (-not $isPortOpen) {
+    Write-Host "FlowCore Daemon is offline. Starting background service silently..." -ForegroundColor Gray
+    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+    $pythonExec = if (Get-Command "pythonw" -ErrorAction SilentlyContinue) { "pythonw" } else { "python" }
+    Start-Process -FilePath $pythonExec -ArgumentList "$scriptDir\run_demo.py" -WindowStyle Hidden -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+}
+
 Write-Host ""
 Write-Host "----------------------------------------------------------" -ForegroundColor Gray
 Write-Host "  FLOWCORE: AI-Powered Cognitive Shell Hook v1.0.0" -ForegroundColor DarkCyan
