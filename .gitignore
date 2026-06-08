@@ -23,3 +23,7 @@ frontend/out/
 # Local environment configs
 .env
 .env.local
+
+# Logs and test transcripts
+*.log
+*.txt

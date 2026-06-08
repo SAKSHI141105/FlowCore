@@ -246,6 +246,31 @@ function prompt {
             if ($error.Count -gt 0) {
                 $stderr_text = $error[0].ToString()
             }
+            
+            # Fallback for native commands: read the console buffer to capture the stderr output
+            if ($null -eq $stderr_text -or $stderr_text.Trim() -eq "") {
+                try {
+                    $rawUI = $Host.UI.RawUI
+                    $cursorY = $rawUI.CursorPosition.Y
+                    # Read the last 15 lines of console buffer
+                    $top = [Math]::Max(0, $cursorY - 15)
+                    $bottom = [Math]::Max($top, $cursorY - 1)
+                    if ($bottom -ge $top) {
+                        $rect = New-Object System.Management.Automation.Host.Rectangle 0, $top, ($rawUI.BufferSize.Width - 1), $bottom
+                        $buffer = $rawUI.GetBufferContents($rect)
+                        $lines = for ($i = 0; $i -lt $buffer.GetLength(0); $i++) {
+                            $line = ""
+                            for ($j = 0; $j -lt $buffer.GetLength(1); $j++) {
+                                $line += $buffer[$i, $j].Character
+                            }
+                            $line.TrimEnd()
+                        }
+                        $stderr_text = ($lines -join "`n").Trim()
+                    }
+                } catch {
+                    # Silently fallback if host does not support GetBufferContents
+                }
+            }
         }
         
         # Build telemetry payload

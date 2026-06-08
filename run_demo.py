@@ -267,8 +267,29 @@ def find_error_fix(stderr_text: str) -> Dict[str, Any]:
         fix_suggestion = "Run: python -m pip install <package> or re-install Python selecting 'Add to PATH'."
     elif "modulenotfounderror" in lower_stderr or "no module named" in lower_stderr:
         err_type = "Python Dependency Missing"
-        pkg = stderr_text.split("named")[-1].replace("'", "").strip() if "named" in stderr_text else "<package>"
+        if "named" in stderr_text:
+            pkg_part = stderr_text.split("named")[-1]
+            pkg_line = pkg_part.split("\n")[0].split("\r")[0]
+            pkg = pkg_line.replace("'", "").replace('"', "").strip()
+        else:
+            pkg = "<package>"
         fix_suggestion = f"Run: pip install {pkg}"
+    elif "python -c" in lower_stderr and "import" in lower_stderr:
+        import re
+        match = re.search(r"import\s+([a-zA-Z0-9_\-]+)", lower_stderr)
+        if not match:
+            match = re.search(r"from\s+([a-zA-Z0-9_\-]+)\s+import", lower_stderr)
+        if match:
+            pkg = match.group(1)
+            err_type = "Python Dependency Missing"
+            fix_suggestion = f"Run: pip install {pkg}"
+    elif "python -m" in lower_stderr and "command failed" in lower_stderr:
+        import re
+        match = re.search(r"python\s+-m\s+([a-zA-Z0-9_\-]+)", lower_stderr)
+        if match:
+            pkg = match.group(1)
+            err_type = "Python Dependency Missing"
+            fix_suggestion = f"Run: pip install {pkg}"
     elif "node" in lower_stderr and "not recognized" in lower_stderr:
         err_type = "NodeJS Missing"
         fix_suggestion = "Download and install Node.js from https://nodejs.org/."
@@ -279,11 +300,12 @@ def find_error_fix(stderr_text: str) -> Dict[str, Any]:
         err_type = "Git Repository Missing"
         fix_suggestion = "Initialize git: run 'git init'"
     elif "npm" in lower_stderr and "not recognized" in lower_stderr:
-        err_type = "Command / Typo Error"
         if "instal\r" in lower_stderr or "instal\n" in lower_stderr or " instal" in lower_stderr or "+ npm instal" in lower_stderr:
+            err_type = "Command / Typo Error"
             fix_suggestion = "Typo detected! You wrote 'instal', but the correct spelling is 'npm install'. (Note: You also need to install Node.js first if npm is not found on this system)."
         else:
-            fix_suggestion = "Install Node.js (which includes npm) and ensure it is added to your Environment PATH."
+            err_type = "NPM Missing"
+            fix_suggestion = "Install Node.js (which includes npm) and ensure it is added to your Environment PATH. (https://nodejs.org/)"
 
     if err_type != "Unspecified Error":
         return {

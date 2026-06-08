@@ -36,6 +36,22 @@ class TestFlowCoreEngine(unittest.TestCase):
         self.assertEqual(res["error_type"], "Python Dependency Missing")
         self.assertIn("pip install numpy", res["fix_applied"])
 
+        # Test package parsing with trailing shell prompt/garbage
+        res_garbage = run_demo.find_error_fix("ModuleNotFoundError: No module named 'pandas'\nPS C:\\Users\\shubh\\Desktop\\FlowCore>")
+        self.assertEqual(res_garbage["error_type"], "Python Dependency Missing")
+        self.assertEqual(res_garbage["fix_applied"], "Run: pip install pandas")
+
+        # Test command-based import fallback
+        res_cmd = run_demo.find_error_fix("Command failed: python -c \"import tensorflow\"")
+        self.assertEqual(res_cmd["error_type"], "Python Dependency Missing")
+        self.assertIn("pip install tensorflow", res_cmd["fix_applied"])
+
+        # Test command-based module fallback
+        res_cmd_m = run_demo.find_error_fix("Command failed: python -m pytorch")
+        self.assertEqual(res_cmd_m["error_type"], "Python Dependency Missing")
+        self.assertIn("pip install pytorch", res_cmd_m["fix_applied"])
+
+        # Test npm missing mapping
         res_path = run_demo.find_error_fix("npm : The term 'npm' is not recognized as the name of a cmdlet")
         self.assertEqual(res_path["error_type"], "NPM Missing")
         self.assertIn("https://nodejs.org/", res_path["fix_applied"])
