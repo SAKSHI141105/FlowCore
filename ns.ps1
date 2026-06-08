@@ -166,10 +166,11 @@ try {
 
 if (-not $isPortOpen) {
     Write-Host "FlowCore Daemon is offline. Starting background service silently..." -ForegroundColor Gray
-    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-    $pythonExec = if (Get-Command "pythonw" -ErrorAction SilentlyContinue) { "pythonw" } else { "python" }
-    Start-Process -FilePath $pythonExec -ArgumentList "$scriptDir\run_demo.py" -WindowStyle Hidden -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 2
+    $scriptDir = $PSScriptRoot
+    if ([string]::IsNullOrEmpty($scriptDir)) { $scriptDir = (Get-Location).Path }
+    $pythonExec = "python"
+    Start-Process -FilePath $pythonExec -ArgumentList "$scriptDir\run_demo.py" -WindowStyle Hidden -WorkingDirectory $scriptDir -RedirectStandardOutput "$scriptDir\flowcore_daemon_out.log" -RedirectStandardError "$scriptDir\flowcore_daemon_err.log" -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 3
 }
 
 Write-Host ""
