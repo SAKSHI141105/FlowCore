@@ -1,0 +1,7 @@
+fastapi>=0.110.0
+uvicorn>=0.28.0
+sentence-transformers>=2.5.1
+scikit-learn>=1.4.1
+numpy>=1.26.4
+pgvector>=0.2.5
+psycopg2-binary>=2.9.9
