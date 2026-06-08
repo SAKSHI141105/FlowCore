@@ -241,7 +241,7 @@ function prompt {
         
         # If command failed
         if (-not $last_exit) {
-            $exit_code = if ($null -ne $last_code) { $last_code } else { 1 }
+            $exit_code = if ($null -ne $last_code -and $last_code -ne 0) { $last_code } else { 1 }
             # Extract last error message
             if ($error.Count -gt 0) {
                 $stderr_text = $error[0].ToString()
@@ -303,6 +303,8 @@ function prompt {
             $search_stderr = $stderr_text
             if ($null -eq $search_stderr -or $search_stderr.Trim() -eq "") {
                 $search_stderr = "Command failed: $cmd"
+            } else {
+                $search_stderr = $search_stderr + "`nCommand used: " + $cmd
             }
 
             $errPayload = @{
