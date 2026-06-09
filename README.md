@@ -1,6 +1,6 @@
-# NeuroShell (FlowCore) — AI-Powered Cognitive Terminal OS Layer
+# FlowCore — AI-Powered Cognitive Terminal OS Layer
 
-**NeuroShell** (internally code-named **FlowCore**) is a next-generation AI-powered cognitive terminal operating layer that hooks directly into native operating system terminals (Windows PowerShell, macOS Terminal, iTerm2, Linux Bash, and Zsh). Rather than running as a standalone utility, it transforms your existing shell into an adaptive, self-learning co-pilot.
+**FlowCore** is a next-generation AI-powered cognitive terminal operating layer that hooks directly into native operating system terminals (Windows PowerShell, macOS Terminal, iTerm2, Linux Bash, and Zsh). Rather than running as a standalone utility, it transforms your existing shell into an adaptive, self-learning co-pilot.
 
 ---
 
@@ -8,10 +8,10 @@
 
 Traditional terminals are stateless and passive. Developers execute the same commands thousands of times without automation, hit the same environment or dependency errors repeatedly, and lose valuable context when switching between the shell, documentation, and web browsers.
 
-**NeuroShell** solves this by inserting a cognitive intelligence layer directly into the terminal prompt loop:
+**FlowCore** solves this by inserting a cognitive intelligence layer directly into the terminal prompt loop:
 * **Behavioral Learning**: It observes your shell command sequences and auto-detects workflows that you run repeatedly.
 * **Predictive Autocomplete**: It uses a local Markov Chain transition probability model to predict and suggest your next command inline (as ghost text) or in clean terminal suggestion overlays.
-* **Contextual Error Recovery**: When a command fails, NeuroShell catches the standard error (`stderr`), parses it through a rule-based engine, and matches it against similar past solutions in a local vector-like search database to present the exact fix instantly.
+* **Contextual Error Recovery**: When a command fails, FlowCore catches the standard error (`stderr`), parses it through a rule-based engine, and matches it against similar past solutions in a local vector-like search database to present the exact fix instantly.
 
 ---
 
@@ -38,7 +38,7 @@ The codebase contains the following files and directories:
 
 ## 🧪 Verification & Automated Testing
 
-NeuroShell includes a comprehensive, multi-tiered test suite that can be run to verify the entire system's functionality:
+FlowCore includes a comprehensive, multi-tiered test suite that can be run to verify the entire system's functionality:
 
 ### Running the Tests
 To run all tests and audit scripts locally, run:
