@@ -4,7 +4,7 @@
 
 ---
 
-## 💡 About & Core Vision
+##  About & Core Vision
 
 Traditional terminals are stateless and passive. Developers execute the same commands thousands of times without automation, hit the same environment or dependency errors repeatedly, and lose valuable context when switching between the shell, documentation, and web browsers.
 
@@ -15,7 +15,7 @@ Traditional terminals are stateless and passive. Developers execute the same com
 
 ---
 
-## 🛠️ Repository & Project Architecture
+## Repository & Project Architecture
 
 The codebase contains the following files and directories:
 
@@ -36,7 +36,7 @@ The codebase contains the following files and directories:
 
 ---
 
-## 🧪 Verification & Automated Testing
+## Verification & Automated Testing
 
 FlowCore includes a comprehensive, multi-tiered test suite that can be run to verify the entire system's functionality:
 
@@ -65,7 +65,7 @@ python audit_api.py
 
 ---
 
-## 🚀 Installation & Usage
+## Installation & Usage
 
 1. **Start the background daemon**:
    ```bash
