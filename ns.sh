@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # FlowCore POSIX Shell Cognitive Integration Hook (Zsh/Bash)
-# Intercepts shell commands, durations, directories, and errors, shipping them to the FlowCore local daemon.
+# Requires: bash >= 4 or zsh. Source this file: source /path/to/ns.sh
+# NOT compatible with /bin/sh or dash.
+#
+# Usage on Linux/Mac:
+#   source /path/to/FlowCore/ns.sh
+# The daemon (run_demo.py) is auto-started if not already running.
 
 flowcore_timestamp_ms() {
     python3 -c 'import time; print(int(time.time() * 1000))' 2>/dev/null || \
@@ -51,14 +56,21 @@ show_flowcore_box() {
         local visible_len=${#visible_line}
         
         # Word wrapping if text exceeds border width
-        if [ $visible_len -gt $((interior - 4)) ]; then
+            # Word wrap using portable awk (works on macOS BSD and GNU/Linux)
+            # 'fold -s' is GNU-only and breaks on macOS
             local max_len=$((interior - 4))
             local plain_text
             plain_text=$(echo -e "$line" | sed 's/\\033\[[0-9;]*m//g' | sed 's/\x1b\[[0-9;]*m//g')
             
-            # Wrap plain text into chunks
+            # Wrap plain text into chunks using awk (portable)
             local wrapped_chunks
-            wrapped_chunks=$(echo "$plain_text" | fold -s -w $max_len)
+            wrapped_chunks=$(echo "$plain_text" | awk -v n="$max_len" '{
+                while (length > n) {
+                    print substr($0, 1, n)
+                    $0 = substr($0, n+1)
+                }
+                print
+            }')
             
             # Print wrapped green lines (recovery fix)
             echo "$wrapped_chunks" | while read -r chunk; do
@@ -200,6 +212,26 @@ print(json.dumps(data))
         fi
     fi
 }
+
+# Auto-start daemon if not already running on port 8000
+_flowcore_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+_flowcore_port_open=false
+if command -v curl >/dev/null 2>&1; then
+    curl -s --max-time 1 http://127.0.0.1:8000/ >/dev/null 2>&1 && _flowcore_port_open=true
+elif command -v nc >/dev/null 2>&1; then
+    nc -z 127.0.0.1 8000 2>/dev/null && _flowcore_port_open=true
+fi
+
+if [ "$_flowcore_port_open" = false ]; then
+    echo -e "\033[90mFlowCore daemon offline. Auto-starting in background...\033[0m"
+    _py="python3"
+    command -v python3 >/dev/null 2>&1 || _py="python"
+    nohup "$_py" "$_flowcore_script_dir/run_demo.py" \
+        > "$_flowcore_script_dir/flowcore_daemon_out.log" \
+        2> "$_flowcore_script_dir/flowcore_daemon_err.log" &
+    sleep 3
+    echo -e "\033[32mDaemon started (PID $!). Logs: flowcore_daemon_out.log\033[0m"
+fi
 
 echo ""
 echo -e "\033[90m----------------------------------------------------------\033[0m"

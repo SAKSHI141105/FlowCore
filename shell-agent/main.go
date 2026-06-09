@@ -195,9 +195,9 @@ func main() {
 			// Start background syncer to periodically POST buffered items to API
 			go batchSyncWorker()
 
-			// Handle exit signals
+			// Handle exit signals — os.Interrupt handles Ctrl+C on Windows (SIGTERM is no-op there)
 			sigChan := make(chan os.Signal, 1)
-			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+			signal.Notify(sigChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 			go func() {
 				<-sigChan
 				fmt.Println("\nStopping agent daemon...")
