@@ -173,6 +173,17 @@ if (-not $isPortOpen) {
     Start-Sleep -Seconds 3
 }
 
+# Create a single shared HttpClient for the entire session (reusing it avoids
+# socket exhaustion from creating/discarding one per command).
+try {
+    $global:flowcore_http_handler = New-Object System.Net.Http.HttpClientHandler
+    $global:flowcore_http_handler.UseProxy = $false
+    $global:flowcore_http_client = New-Object System.Net.Http.HttpClient($global:flowcore_http_handler)
+    $global:flowcore_http_client.Timeout = [System.TimeSpan]::FromMilliseconds(1000)
+} catch {
+    $global:flowcore_http_client = $null
+}
+
 Write-Host ""
 Write-Host "----------------------------------------------------------" -ForegroundColor Gray
 Write-Host "  FLOWCORE: AI-Powered Cognitive Shell Hook v1.0.0" -ForegroundColor DarkCyan
@@ -247,11 +258,13 @@ function prompt {
                 $stderr_text = $error[0].ToString()
             }
             
-            # Fallback for native commands: read the console buffer to capture the stderr output
-            if ($null -eq $stderr_text -or $stderr_text.Trim() -eq "") {
+            # Fallback for native commands: read the console buffer to capture the stderr output.
+            # Guard: skip if CursorPosition.Y is 0 (non-interactive terminals like VS Code / CI)
+            $cursorY = 0
+            try { $cursorY = $Host.UI.RawUI.CursorPosition.Y } catch {}
+            if ($cursorY -gt 0 -and ($null -eq $stderr_text -or $stderr_text.Trim() -eq "")) {
                 try {
                     $rawUI = $Host.UI.RawUI
-                    $cursorY = $rawUI.CursorPosition.Y
                     # Read the last 15 lines of console buffer
                     $top = [Math]::Max(0, $cursorY - 15)
                     $bottom = [Math]::Max($top, $cursorY - 1)
@@ -288,32 +301,29 @@ function prompt {
         
         # Call API to log command and fetch predictions
         try {
-            # Use HttpClientHandler with UseProxy=$false to bypass auto-proxy detection (makes call <5ms)
-            $handler = New-Object System.Net.Http.HttpClientHandler
-            $handler.UseProxy = $false
-            $client = New-Object System.Net.Http.HttpClient($handler)
-            $client.Timeout = [System.TimeSpan]::FromMilliseconds(1000)
-            $content = New-Object System.Net.Http.StringContent($jsonBody, [System.Text.Encoding]::UTF8, "application/json")
-            
-            $postTask = $client.PostAsync("http://127.0.0.1:8000/api/commands", $content)
-            if ($postTask.Wait(1000)) {
-                $response = $postTask.Result
-                if ($response.IsSuccessStatusCode) {
-                    $readTask = $response.Content.ReadAsStringAsync()
-                    if ($readTask.Wait(500)) {
-                        $jsonStr = $readTask.Result
-                        $res = ConvertFrom-Json $jsonStr
-                        
-                        # Show predictions if successful command and predictions exist
-                        if ($exit_code -eq 0 -and $null -ne $res -and $null -ne $res.predictions -and $res.predictions.Count -gt 0) {
-                            $predLines = @()
-                            $predLines += "<gray>Next command suggestions based on your history:</gray>"
-                            $predLines += ""
-                            foreach ($pred in $res.predictions) {
-                                $confText = "$($pred.confidence)%"
-                                $predLines += "<cyan>*</cyan> <green>$($pred.command.PadRight(40))</green> <gray>($confText conf)</gray>"
+            # Reuse the shared global HttpClient (avoids socket exhaustion)
+            if ($null -ne $global:flowcore_http_client) {
+                $client = $global:flowcore_http_client
+                $content = New-Object System.Net.Http.StringContent($jsonBody, [System.Text.Encoding]::UTF8, "application/json")
+                $postTask = $client.PostAsync("http://127.0.0.1:8000/api/commands", $content)
+                if ($postTask.Wait(1000)) {
+                    $response = $postTask.Result
+                    if ($response.IsSuccessStatusCode) {
+                        $readTask = $response.Content.ReadAsStringAsync()
+                        if ($readTask.Wait(500)) {
+                            $jsonStr = $readTask.Result
+                            $res = ConvertFrom-Json $jsonStr
+                            # Show predictions if successful command and predictions exist
+                            if ($exit_code -eq 0 -and $null -ne $res -and $null -ne $res.predictions -and $res.predictions.Count -gt 0) {
+                                $predLines = @()
+                                $predLines += "<gray>Next command suggestions based on your history:</gray>"
+                                $predLines += ""
+                                foreach ($pred in $res.predictions) {
+                                    $confText = "$($pred.confidence)%"
+                                    $predLines += "<cyan>*</cyan> <green>$($pred.command.PadRight(40))</green> <gray>($confText conf)</gray>"
+                                }
+                                Show-FlowCoreBox -Title "COMMAND AUTO-PREDICT" -Lines $predLines -Color "DarkCyan" -TitleColor "Cyan"
                             }
-                            Show-FlowCoreBox -Title "COMMAND AUTO-PREDICT" -Lines $predLines -Color "DarkCyan" -TitleColor "Cyan"
                         }
                     }
                 }
@@ -338,29 +348,28 @@ function prompt {
             $errJson = $errPayload | ConvertTo-Json -Compress
 
             try {
-                $handler = New-Object System.Net.Http.HttpClientHandler
-                $handler.UseProxy = $false
-                $client = New-Object System.Net.Http.HttpClient($handler)
-                $client.Timeout = [System.TimeSpan]::FromMilliseconds(1000)
-                $errContent = New-Object System.Net.Http.StringContent($errJson, [System.Text.Encoding]::UTF8, "application/json")
-
-                $postTask = $client.PostAsync("http://127.0.0.1:8000/api/errors/resolve", $errContent)
-                if ($postTask.Wait(1000)) {
-                    $response = $postTask.Result
-                    if ($response.IsSuccessStatusCode) {
-                        $readTask = $response.Content.ReadAsStringAsync()
-                        if ($readTask.Wait(500)) {
-                            $resJson = $readTask.Result
-                            $fixData = ConvertFrom-Json $resJson
-                            if ($null -ne $fixData -and $null -ne $fixData.fix_applied) {
-                                $errLines = @()
-                                $errLines += "<red>[!]</red> <gray>Captured Error:</gray> <white>$($fixData.error_type)</white>"
-                                $errLines += "<red>[!]</red> <gray>Confidence:    </gray> <white>$($fixData.confidence)%</white>"
-                                $errLines += "<red>[!]</red> <gray>Source:        </gray> <white>$($fixData.source)</white>"
-                                $errLines += ""
-                                $errLines += "<yellow>SUGGESTED RECOVERY FIX:</yellow>"
-                                $errLines += "<green>$($fixData.fix_applied)</green>"
-                                Show-FlowCoreBox -Title "RUNTIME ERROR CAPTURED" -Lines $errLines -Color "DarkRed" -TitleColor "Red"
+                # Reuse shared global HttpClient
+                if ($null -ne $global:flowcore_http_client) {
+                    $client = $global:flowcore_http_client
+                    $errContent = New-Object System.Net.Http.StringContent($errJson, [System.Text.Encoding]::UTF8, "application/json")
+                    $postTask = $client.PostAsync("http://127.0.0.1:8000/api/errors/resolve", $errContent)
+                    if ($postTask.Wait(1000)) {
+                        $response = $postTask.Result
+                        if ($response.IsSuccessStatusCode) {
+                            $readTask = $response.Content.ReadAsStringAsync()
+                            if ($readTask.Wait(500)) {
+                                $resJson = $readTask.Result
+                                $fixData = ConvertFrom-Json $resJson
+                                if ($null -ne $fixData -and $null -ne $fixData.fix_applied) {
+                                    $errLines = @()
+                                    $errLines += "<red>[!]</red> <gray>Captured Error:</gray> <white>$($fixData.error_type)</white>"
+                                    $errLines += "<red>[!]</red> <gray>Confidence:    </gray> <white>$($fixData.confidence)%</white>"
+                                    $errLines += "<red>[!]</red> <gray>Source:        </gray> <white>$($fixData.source)</white>"
+                                    $errLines += ""
+                                    $errLines += "<yellow>SUGGESTED RECOVERY FIX:</yellow>"
+                                    $errLines += "<green>$($fixData.fix_applied)</green>"
+                                    Show-FlowCoreBox -Title "RUNTIME ERROR CAPTURED" -Lines $errLines -Color "DarkRed" -TitleColor "Red"
+                                }
                             }
                         }
                     }

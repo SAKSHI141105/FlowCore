@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"os"
 	"time"
 
+	"flowcore-backend/config"
 	"flowcore-backend/models"
 
 	"github.com/gofiber/fiber/v2"
@@ -82,20 +82,14 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid password credentials"})
 	}
 
-	// Sign JWT token
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		jwtSecret = "flowcore_default_secret_key_2026"
-	}
-
+	// Sign JWT token using the shared secret from config
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":   user.ID.String(),
 		"email": user.Email,
 		"exp":   time.Now().Add(72 * time.Hour).Unix(),
 		"iat":   time.Now().Unix(),
 	})
-
-	tokenString, err := token.SignedString([]byte(jwtSecret))
+	tokenString, err := token.SignedString([]byte(config.JWTSecret()))
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate authorization token"})
 	}

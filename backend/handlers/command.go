@@ -32,7 +32,6 @@ func (h *CommandHandler) LogCommand(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse request body"})
 	}
 
-	sessionUUID, _ := uuid.Parse(payload.SessionID)
 	cmd := models.Command{
 		ID:         uuid.New(),
 		UserID:     uuid.Nil, // Default global user
@@ -40,7 +39,7 @@ func (h *CommandHandler) LogCommand(c *fiber.Ctx) error {
 		Cwd:        payload.Cwd,
 		ExitCode:   payload.ExitCode,
 		DurationMs: payload.DurationMs,
-		SessionID:  sessionUUID,
+		SessionID:  payload.SessionID, // stored as plain string - supports 'powershell_live_session' etc.
 		CreatedAt:  time.Now(),
 	}
 

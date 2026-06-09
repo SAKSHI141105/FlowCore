@@ -1,9 +1,10 @@
 package middleware
 
 import (
-	"os"
 	"strings"
 	"time"
+
+	"flowcore-backend/config"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -11,11 +12,6 @@ import (
 
 // JWTProtected checks for valid JWT token in headers and sets user ID in context
 func JWTProtected() fiber.Handler {
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		jwtSecret = "flowcore_default_secret_key_2026"
-	}
-
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
@@ -29,7 +25,7 @@ func JWTProtected() fiber.Handler {
 
 		tokenStr := parts[1]
 		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-			return []byte(jwtSecret), nil
+			return []byte(config.JWTSecret()), nil
 		})
 
 		if err != nil || !token.Valid {

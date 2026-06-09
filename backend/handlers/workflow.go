@@ -80,7 +80,18 @@ func (h *WorkflowHandler) CreateWorkflow(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save workflow"})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(w)
+	// Deserialise Steps for the response so caller gets a proper JSON array,
+	// not the double-encoded string stored in the DB column.
+	var decodedSteps []string
+	json.Unmarshal([]byte(w.Steps), &decodedSteps)
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"id":            w.ID,
+		"name":          w.Name,
+		"steps":         decodedSteps,
+		"trigger_count": w.TriggerCount,
+		"created_at":    w.CreatedAt,
+	})
 }
 
 func (h *WorkflowHandler) DeleteWorkflow(c *fiber.Ctx) error {

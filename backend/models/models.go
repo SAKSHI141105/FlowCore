@@ -22,7 +22,7 @@ type Command struct {
 	Cwd        string    `gorm:"type:text" json:"cwd"`
 	ExitCode   int       `gorm:"type:integer" json:"exit_code"`
 	DurationMs int       `gorm:"type:integer" json:"duration_ms"`
-	SessionID  uuid.UUID `gorm:"type:uuid" json:"session_id"`
+	SessionID  string    `gorm:"type:text" json:"session_id"` // string so non-UUID IDs like 'powershell_live_session' work
 	CreatedAt  time.Time `json:"created_at"`
 }
 
@@ -52,4 +52,5 @@ type Session struct {
 	EndedAt      *time.Time `json:"ended_at"`
 	CommandCount int        `gorm:"type:integer;default:0" json:"command_count"`
 	Recording    string     `gorm:"type:jsonb" json:"recording"` // JSON listing execution history
+	CreatedAt    time.Time  `json:"created_at"`                  // required by GORM AutoMigrate
 }
