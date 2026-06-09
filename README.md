@@ -1,69 +1,84 @@
-# FlowCore: AI-Powered Terminal Intelligence & Workflow Optimization
+# NeuroShell (FlowCore) — AI-Powered Cognitive Terminal OS Layer
 
-FlowCore is an intelligent developer operating layer that operates directly inside native operating system terminals (Windows PowerShell, macOS Terminal, iTerm2, Linux Bash, and Zsh) rather than running as a standalone utility. It transforms traditional command-line environments into adaptive, workflow-aware engineering systems capable of learning developer behavior, auto-mining repetitive sequences, predicting next commands, and resolving runtime errors in real time.
-
----
-
-## Key Features
-
-1. **Intelligent Command Predictions**: Uses local Markov Chain transition probability analysis to suggest the most likely next command as Fish-style ghost text or clean ASCII boxes directly inside your shell.
-2. **Contextual Error Recovery**: Instantly intercepts non-zero exit codes and matches the `stderr` string against a local error vector database to present resolution steps (e.g., missing dependencies, wrong ports, path configurations) in clean terminal layouts.
-3. **Behavioral Workflow Mining**: Runs a DBSCAN sequence-mining algorithm over command loops to automatically group repetitive command histories (like `npm install` -> `npm run dev`) into single triggered workflows.
-4. **Session Replay Engine**: Logs timelines of terminal sessions, capturing durations, directories, timestamps, commands, and exit codes, allowing you to reconstruct past sessions step-by-step.
-5. **Multi-Platform Shell Hooks**: Features native integrations for both Windows PowerShell (`ns.ps1`) and POSIX Zsh/Bash (`ns.sh`) with zero-latency response loops (<3ms).
-6. **Premium Developer HUD**: A dashboard showing command velocity charts, workflow clustering maps, active errors, and replay timelines.
+**NeuroShell** (internally code-named **FlowCore**) is a next-generation AI-powered cognitive terminal operating layer that hooks directly into native operating system terminals (Windows PowerShell, macOS Terminal, iTerm2, Linux Bash, and Zsh). Rather than running as a standalone utility, it transforms your existing shell into an adaptive, self-learning co-pilot.
 
 ---
 
-## Architecture
+## 💡 About & Core Vision
 
-FlowCore is split into specialized decoupled layers:
-* **Shell Integration Layer (`ns.ps1` & `ns.sh`)**: Fast prompt hooks that capture command execution durations, active directories, exit codes, and errors, shipping them to the background server.
-* **Unified Daemon (`run_demo.py`)**: A zero-install background server built with FastAPI. It handles the local SQLite storage (`flowcore.db`), local Markov Chain autocompletion, error resolution searches, and hosts the HUD.
-* **Go REST Backend (`backend/`)**: High-performance module configured with GORM and Fiber to scale telemetry synchronization, user sessions, and PostgreSQL databases.
-* **Go Shell Agent (`shell-agent/`)**: An alternative compiled background CLI agent that handles asynchronous batch shipping of local telemetries to remote servers.
-* **Next.js React HUD (`frontend/`)**: Advanced dashboard interface built with Tailwind CSS, Framer Motion, and xterm.js for viewing production analytics.
+Traditional terminals are stateless and passive. Developers execute the same commands thousands of times without automation, hit the same environment or dependency errors repeatedly, and lose valuable context when switching between the shell, documentation, and web browsers.
+
+**NeuroShell** solves this by inserting a cognitive intelligence layer directly into the terminal prompt loop:
+* **Behavioral Learning**: It observes your shell command sequences and auto-detects workflows that you run repeatedly.
+* **Predictive Autocomplete**: It uses a local Markov Chain transition probability model to predict and suggest your next command inline (as ghost text) or in clean terminal suggestion overlays.
+* **Contextual Error Recovery**: When a command fails, NeuroShell catches the standard error (`stderr`), parses it through a rule-based engine, and matches it against similar past solutions in a local vector-like search database to present the exact fix instantly.
 
 ---
 
-## Installation & Setup
+## 🛠️ Repository & Project Architecture
 
-### 1. Start the Background Server
-Ensure Python is installed, then launch the FastAPI server:
+The codebase contains the following files and directories:
+
+### Shell Integrations & CLI Hooks
+* [ns.ps1](file:///c:/Users/shubh/Desktop/Neuro-Shell/ns.ps1): Native Windows PowerShell integration hook. Uses `$Host.UI.RawUI.GetBufferContents` as a fallback to capture error tracebacks from native console commands (like Python exceptions) and ships telemetry asynchronously.
+* [ns.sh](file:///c:/Users/shubh/Desktop/Neuro-Shell/ns.sh): Native Linux/macOS POSIX Bash & Zsh integration hook. Uses `curl` for communication, a portable `awk` word-wrapping mechanism for macOS BSD compatibility, and auto-starts the daemon in the background.
+
+### Cognitive Services & Telemetry Collector
+* [run_demo.py](file:///c:/Users/shubh/Desktop/Neuro-Shell/run_demo.py): The main FastAPI background daemon. It coordinates the local SQLite telemetry database, Markov Chain autocomplete transition matrix, sliding-window workflow mining, and cognitive error resolution rules.
+* [templates/dashboard.html](file:///c:/Users/shubh/Desktop/Neuro-Shell/templates/dashboard.html): Premium dark terminal futurism HUD single-page dashboard serving analytics, workflow execution, active error details, session replays, and onboarding telemetry.
+* [flowcore.db](file:///c:/Users/shubh/Desktop/Neuro-Shell/flowcore.db): Local SQLite database storing commands history, parsed sessions, mined workflows, and resolved error telemetry.
+
+### Production Microservices (Ready to Compile)
+* [backend/](file:///c:/Users/shubh/Desktop/Neuro-Shell/backend/): High-performance telemetry server written in Go using the **Fiber** framework and **GORM** for robust database interaction.
+* [shell-agent/](file:///c:/Users/shubh/Desktop/Neuro-Shell/shell-agent/): Alternative compiled background CLI daemon written in Go to handle asynchronous offline buffer syncing.
+* [frontend/](file:///c:/Users/shubh/Desktop/Neuro-Shell/frontend/): Complete Next.js React frontend codebase featuring Spline 3D Scene loading, framer-motion animations, and customized telemetry panels.
+* [ml-service/](file:///c:/Users/shubh/Desktop/Neuro-Shell/ml-service/): Specialized ML microservice written in Python for scaling semantic cosine similarity and sequence clustering.
+
+---
+
+## 🧪 Verification & Automated Testing
+
+NeuroShell includes a comprehensive, multi-tiered test suite that can be run to verify the entire system's functionality:
+
+### Running the Tests
+To run all tests and audit scripts locally, run:
 ```bash
-python run_demo.py
-```
-This starts the local daemon listening on port `8000` and creates the `flowcore.db` database.
+# Run the core unit test engine
+python test_engine.py
 
-### 2. Activate the Shell Hook
-To bind the cognitive logger to your current shell session:
+# Run all 65 comprehensive scenarios (simulating errors, typos, and paths)
+python test_comprehensive.py
 
-* **On Windows PowerShell**:
-  ```powershell
-  . .\ns.ps1
-  ```
-  *To load automatically on startup:* Run `notepad $PROFILE` in PowerShell and append `. C:\path\to\ns.ps1` to the end of the file.
+# Verify the 24 cognitive error mapping rules
+python verify_rules.py
 
-* **On macOS / Linux (Zsh or Bash)**:
-  ```bash
-  source ./ns.sh
-  ```
-  *To load automatically on startup:* Append `source /path/to/ns.sh` to your `~/.zshrc` or `~/.bashrc` file.
-
-### 3. Open the Developer HUD
-Navigate to **`http://127.0.0.1:8000`** in your browser to inspect command velocity graphs, view suggested workflows, and replay terminal timelines.
-
----
-
-## Verification & Test Suite
-
-You can verify the entire local prediction engine, similarity scoring, error resolvers, and sliding window miners by running the Python test suite:
-```bash
-python -m unittest test_engine.py
+# Audit all 17 live daemon API endpoints (daemon must be running)
+python audit_api.py
 ```
 
+### Coverage Overview
+1. [test_engine.py](file:///c:/Users/shubh/Desktop/Neuro-Shell/test_engine.py): Unit tests verifying the Markov autocomplete transition matrix, sequence mining, and basic error classification.
+2. [test_comprehensive.py](file:///c:/Users/shubh/Desktop/Neuro-Shell/test_comprehensive.py): 65 comprehensive testing scenarios confirming matching accuracy for various errors (syntax error, indentation error, Git auth issues, port conflicts, NPM typos, PyPI packages).
+3. [verify_rules.py](file:///c:/Users/shubh/Desktop/Neuro-Shell/verify_rules.py): Spot-checks the 24 error mapping rules of the cognitive solver engine.
+4. [audit_api.py](file:///c:/Users/shubh/Desktop/Neuro-Shell/audit_api.py): Executes live HTTP requests against the FastAPI backend, verifying all 17 API endpoints function correctly with 95%+ classification confidence.
+5. [crossplatform_audit.py](file:///c:/Users/shubh/Desktop/Neuro-Shell/crossplatform_audit.py): Audits platform-specific code constraints across Windows, macOS, and Linux, ensuring maximum cross-platform compatibility.
+
 ---
 
-## Local-First & Privacy Configs
+## 🚀 Installation & Usage
 
-FlowCore works locally first. Your command telemetry is saved inside the local SQLite database `flowcore.db`. You can configure prediction thresholds, models, and toggle local offline fallbacks inside the **User Settings** tab of the dashboard.
+1. **Start the background daemon**:
+   ```bash
+   python run_demo.py
+   ```
+2. **Source the hook in your terminal**:
+   * **Windows (PowerShell)**:
+     ```powershell
+     . .\ns.ps1
+     ```
+   * **Linux / macOS (Bash or Zsh)**:
+     ```bash
+     source ./ns.sh
+     ```
+3. **Explore the Developer HUD**:
+   Open your browser to `http://localhost:8000` to access the premium control center.
