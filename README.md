@@ -1,4 +1,4 @@
-# FlowCore — AI-Powered Cognitive Terminal OS Layer
+# FlowCore — Cognitive Developer Workflow Intelligence Layer
 
 **FlowCore** is a next-generation AI-powered cognitive terminal operating layer that hooks directly into native operating system terminals (Windows PowerShell, macOS Terminal, iTerm2, Linux Bash, and Zsh). Rather than running as a standalone utility, it transforms your existing shell into an adaptive, self-learning co-pilot.
 
